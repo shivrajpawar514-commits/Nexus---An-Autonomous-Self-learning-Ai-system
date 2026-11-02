@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+episodes.db
+sandbox_workspace/*
+!sandbox_workspace/.gitkeep
+.DS_Store
+
