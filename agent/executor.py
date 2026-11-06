@@ -61,11 +61,35 @@ class Executor:
             thought = text.strip()
 
         # Extract Action
-        m = re.search(r"Action:\s*([a-zA-Z_0-9]+)\((.*?)\)", text, re.DOTALL | re.IGNORECASE)
+        m = re.search(r"Action:\s*([a-zA-Z_0-9]+)\(", text, re.IGNORECASE)
         if m:
             action_name = m.group(1).strip()
-            args_str = m.group(2).strip()
+            start_idx = m.end() - 1
+            depth = 0
+            end_idx = -1
+            in_single = False
+            in_double = False
+            for i in range(start_idx, len(text)):
+                ch = text[i]
+                if ch == "'" and not in_double:
+                    in_single = not in_single
+                elif ch == '"' and not in_single:
+                    in_double = not in_double
+                elif not in_single and not in_double:
+                    if ch == "(":
+                        depth += 1
+                    elif ch == ")":
+                        depth -= 1
+                        if depth == 0:
+                            end_idx = i
+                            break
+            if end_idx != -1:
+                args_str = text[start_idx + 1 : end_idx].strip()
+            else:
+                args_str = text[start_idx + 1 :].rstrip(")").strip()
+
             if args_str:
+                # 1. Try standard AST keyword parse
                 parsed = False
                 try:
                     fake_call = f"dummy({args_str})"
@@ -77,6 +101,14 @@ class Executor:
                 except Exception:
                     pass
 
+                # 2. Try single kwarg regex parse for multiline strings
+                if not parsed:
+                    kw_m = re.match(r"^([a-zA-Z_0-9]+)\s*=\s*['\"](.*)['\"]$", args_str, re.DOTALL)
+                    if kw_m:
+                        action_args[kw_m.group(1)] = kw_m.group(2)
+                        parsed = True
+
+                # 3. Fallback JSON / raw string handling
                 if not parsed:
                     try:
                         action_args = json.loads(f"{{{args_str}}}")
