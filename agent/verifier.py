@@ -66,3 +66,46 @@ class Verifier:
             score=1.0,
         )
 
+    def check_llm_judge(self, goal: str, output: str, rubric: str = "") -> Verdict:
+        """Tier 3: Fallback LLM-as-a-Judge (Trust: 0.5)."""
+        if not self.llm:
+            return Verdict(
+                passed=bool(output.strip()),
+                trust=0.4,
+                verifier_tier="heuristic_fallback",
+                evidence="No judge LLM configured; heuristic non-empty check.",
+                score=0.5 if output.strip() else 0.0,
+            )
+
+        prompt = (
+            f"You are an impartial evaluation judge evaluating whether an AI agent succeeded.\n\n"
+            f"Goal: {goal}\n"
+            f"Agent Output: {output}\n"
+            f"Rubric: {rubric or 'Check if the agent factually and completely resolved the goal.'}\n\n"
+            f"Respond with JSON:\n"
+            f"{{\"passed\": true/false, \"score\": 0.0-1.0, \"evidence\": \"explanation\"}}"
+        )
+
+        class JudgeOutput(BaseModel):
+            passed: bool
+            score: float
+            evidence: str
+
+        try:
+            res = self.llm.generate_structured(prompt, JudgeOutput)
+            return Verdict(
+                passed=res.passed,
+                trust=0.5,
+                verifier_tier="llm_judge",
+                evidence=res.evidence,
+                score=res.score,
+            )
+        except Exception as e:
+            return Verdict(
+                passed=False,
+                trust=0.3,
+                verifier_tier="llm_judge_error",
+                evidence=f"Judge failed: {str(e)}",
+                score=0.0,
+            )
+
