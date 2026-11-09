@@ -58,9 +58,9 @@ class Reflector:
                 response_model=LessonContainer,
                 system_prompt="You are an expert post-mortem reflection and verbal reinforcement learning engine.",
             )
-            # Initial confidence assignment
+            # Weight confidence by verifier trust
             for l in container.lessons:
-                l.trust_weight = l.confidence
+                l.trust_weight = round(l.confidence * verdict.trust, 3)
 
             return ReflectionResult(
                 goal=goal,
@@ -85,7 +85,7 @@ class Reflector:
                         root_cause="Execution trace variance",
                         rule=fallback_rule,
                         confidence=0.85,
-                        trust_weight=0.85,
+                        trust_weight=round(0.85 * verdict.trust, 3),
                     )
                 ],
                 summary="Fallback heuristic reflection.",
