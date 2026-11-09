@@ -61,3 +61,15 @@ This document summarizes the core theoretical foundations that inform the archit
   - Autonomous memory page swapping and summarization to avoid context window degradation.
 - **System Integration**: Implemented across `memory/` modules, pairing SQLite for structured historical episodes with semantic vector retrieval and context length curation.
 
+---
+
+### 6. Verbal Reinforcement Dynamics & Verifier Trust Weighting
+
+To prevent negative transfer (where erroneous feedback degrades agent performance), Nexus formalizes verbal reinforcement via trust-discounted lesson formulation:
+
+$$\text{TrustWeight}(L) = \text{Confidence}(L) \times \text{Trust}(\text{Verdict})$$
+
+- When a programmatic test suite verifies an outcome ($\text{Trust} = 1.0$), lessons are incorporated with full confidence ($1.0 \times 0.85 = 0.85$).
+- When heuristic fallbacks or unverified assertions evaluate the outcome ($\text{Trust} \le 0.4$), the resulting lesson weight is discounted ($\le 0.34$), preventing hallucinated rules from dominating retrieval ranking in subsequent tasks.
+
+
