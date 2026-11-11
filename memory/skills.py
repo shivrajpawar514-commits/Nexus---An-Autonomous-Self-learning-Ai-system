@@ -74,13 +74,32 @@ class SkillLibrary:
             return None
 
     def verify_and_promote(self, name: str) -> bool:
-        """Verifies the skill against its test suite."""
-        return self.verify_skill(name) is not None
+        """Executes the skill's unit tests in Python; if passed, marks verified and registers as a tool."""
+        skill = self.skills.get(name)
+        if not skill:
+            return False
+
+        fn = self.verify_skill(name)
+        if fn is None:
+            return False
+
+        # Dynamically register verified skill in live tool registry
+        t = Tool(
+            name=skill.name,
+            description=skill.description,
+            func=fn,
+            permission=PermissionTier.READ_ONLY,
+            parameters_schema=skill.input_schema or None,
+        )
+        self.tool_registry.register(t)
+        return True
 
     def record_usage(self, name: str, success: bool):
         if name in self.skills:
             if success:
                 self.skills[name].success_count += 1
+                if self.skills[name].success_count >= 2 and not self.skills[name].is_verified:
+                    self.verify_and_promote(name)
             else:
                 self.skills[name].failure_count += 1
 
