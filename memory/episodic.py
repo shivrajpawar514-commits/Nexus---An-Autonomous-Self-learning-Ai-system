@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
+from memory.db import DatabaseAdapter, DATABASE_URL
 
 DB_PATH = Path("episodes.db").resolve()
 
@@ -25,34 +26,16 @@ class EpisodeRecord(BaseModel):
 
 
 class EpisodicMemory:
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Optional[Path] = None, db_url: Optional[str] = None):
         self.db_path = db_path or DB_PATH
-        self._init_db()
+        self.db_adapter = DatabaseAdapter(db_url=db_url or (f"sqlite:///{self.db_path}" if db_path else DATABASE_URL))
+        self.db_adapter.init_schema()
 
     def _get_connection(self):
-        return sqlite3.connect(self.db_path)
+        return self.db_adapter.get_connection()
 
     def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS episodes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                goal TEXT NOT NULL,
-                plan_json TEXT NOT NULL,
-                trajectory_json TEXT NOT NULL,
-                passed BOOLEAN NOT NULL,
-                score REAL NOT NULL,
-                total_steps INTEGER NOT NULL,
-                total_tokens INTEGER NOT NULL,
-                duration_sec REAL NOT NULL,
-                created_at REAL NOT NULL
-            );
-            """
-        )
-        conn.commit()
-        conn.close()
+        self.db_adapter.init_schema()
 
     def record_episode(
         self,
