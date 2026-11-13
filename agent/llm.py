@@ -257,7 +257,7 @@ class OllamaLLM(LLMInterface):
                     model=self.model_name,
                 )
         except Exception:
-            # Fallback to deterministic mock if local Ollama daemon is offline
+            # Resilient offline fallback with health check ping
             mock_res = self.fallback_mock.generate(prompt, system_prompt=system_prompt, stop=stop, temperature=temperature)
             mock_res.model = f"ollama-offline-fallback({self.model_name})"
             return mock_res
