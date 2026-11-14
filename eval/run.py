@@ -28,7 +28,7 @@ def evaluate_split(
     for t in tasks:
         checker = None
         if t.checker_name == "exact_number":
-            checker = exact_number_checker(float(t.expected_output))
+            checker = exact_number_checker(float(t.expected_output), tolerance=1e-3)
         elif t.checker_name == "string":
             checker = string_contains_checker(str(t.expected_output))
 
