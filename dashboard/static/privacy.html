@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Autonomous Agent System</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-950 text-zinc-200 font-sans antialiased min-h-screen flex flex-col">
+  <header class="border-b border-zinc-800 bg-zinc-900 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <span class="font-mono font-semibold text-sm text-zinc-100">AUTONOMOUS AGENT SYSTEM</span>
+    </div>
+    <a href="/" class="text-xs font-mono text-zinc-400 hover:text-zinc-100">&larr; Return to Dashboard</a>
+  </header>
+
+  <main class="max-w-4xl w-full mx-auto p-6 md:p-10 flex-1 space-y-6 text-sm leading-relaxed">
+    <h1 class="text-2xl font-bold text-zinc-100 font-mono">Privacy Policy</h1>
+    <p class="text-xs text-zinc-500 font-mono">Effective Date: November 1, 2026</p>
+
+    <section class="space-y-3">
+      <h2 class="text-base font-semibold text-zinc-200 font-mono">1. Overview</h2>
+      <p class="text-zinc-400">This Privacy Policy governs the collection, storage, and processing of technical execution telemetry and workspace data within the Autonomous Agent System. This software runs locally within a secure sandbox environment on the host machine.</p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="text-base font-semibold text-zinc-200 font-mono">2. Data Storage and Local Isolation</h2>
+      <p class="text-zinc-400">All episodic execution histories, planner traces, task observations, and self-learning lessons are persisted strictly in local SQLite databases (episodes.db) located on your local disk. No telemetry, task prompts, or execution traces are transmitted to external commercial aggregators or analytics trackers.</p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="text-base font-semibold text-zinc-200 font-mono">3. Deterministic Sandboxing and File Access</h2>
+      <p class="text-zinc-400">The file system tools operate within a bounded sandbox workspace. Path traversal outside the assigned root is intercepted and denied. AST inspection verifies that untrusted code does not invoke restricted operating system binaries, network sockets, or unauthorized subprocesses.</p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="text-base font-semibold text-zinc-200 font-mono">4. Third-Party Language Model Providers</h2>
+      <p class="text-zinc-400">When configuring an external model provider (such as OpenAI or Google Cloud Vertex AI), prompt inputs and system messages are subject to the respective provider's data processing terms. In offline mock mode, all generation is handled locally without outbound network connections.</p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="text-base font-semibold text-zinc-200 font-mono">5. Data Retention and Erasure</h2>
+      <p class="text-zinc-400">Users maintain full ownership and control of local data. To erase all stored memory traces, delete the local episodes.db file or run the clean target from the Makefile.</p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="text-base font-semibold text-zinc-200 font-mono">6. Contact and Inquiries</h2>
+      <p class="text-zinc-400">For security inquiries, audit verifications, or documentation requests, consult the project security documentation located at docs/safety.md.</p>
+    </section>
+  </main>
+
+  <footer class="border-t border-zinc-800 bg-zinc-900 px-6 py-4 text-xs text-zinc-500 font-mono text-center">
+    Autonomous Agent System &bull; Local Engineering Console &bull; <a href="/terms" class="hover:text-zinc-300">Terms of Service</a>
+  </footer>
+</body>
+</html>
+
