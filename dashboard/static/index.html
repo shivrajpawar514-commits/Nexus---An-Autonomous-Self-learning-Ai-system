@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autonomous Agent OS - Creative Mission Control</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2306b6d4'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              violet: '#8b5cf6',
+              amber: '#f59e0b',
+              rose: '#f43f5e',
+              dark: '#030712',
+              card: '#0b0f19',
+              cardHover: '#111827',
+              border: 'rgba(255, 255, 255, 0.08)',
+              glow: 'rgba(6, 182, 212, 0.15)'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'SF Mono', 'ui-monospace', 'monospace'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(6, 182, 212, 0.3), inset 0 0 15px rgba(6, 182, 212, 0.1); }
+      50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.6), inset 0 0 25px rgba(6, 182, 212, 0.3); }
+    }
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(1000%); }
+    }
+    @keyframes floatParticle {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(2deg); }
+    }
+    @keyframes ripple {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    .anim-pulse-glow { animation: pulseGlow 3s infinite ease-in-out; }
+    .anim-float { animation: floatParticle 5s infinite ease-in-out; }
+    .ripple-ring::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: inherit;
+      border: 1px solid currentColor;
+      animation: ripple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+    }
+    .glass-card {
+      background: rgba(11, 15, 25, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: rgba(6, 182, 212, 0.35);
+      box-shadow: 0 8px 32px -4px rgba(6, 182, 212, 0.15);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #030712; }
+    ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #374151; }
+  </style>
+</head>
+
+<body class="bg-[#030712] text-slate-100 min-h-screen font-sans antialiased flex flex-col relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- INTERACTIVE CANVAS NEURAL BACKGROUND -->
+  <canvas id="neuralCanvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
+
+  <!-- TOP HEADER HUD -->
+  <header class="border-b border-white/10 bg-[#030712]/80 backdrop-blur-xl sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between shadow-2xl">
+    <div class="flex items-center space-x-3.5">
+      <div class="relative w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 via-blue-600 to-violet-600 p-[1px] shadow-lg shadow-cyan-500/20 anim-float">
+        <div class="w-full h-full bg-[#070b14] rounded-lg flex items-center justify-center">
+          <i class="fa-solid fa-atom text-cyan-400 text-base"></i>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2.5">
+          <h1 class="font-mono font-bold text-sm tracking-wide bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
+            AUTONOMOUS AGENT OS
+          </h1>
+          <span class="relative flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-emerald-950/60 text-emerald-400 border border-emerald-500/40">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 ripple-ring"></span>
+            CORE LIVE
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 font-mono tracking-tight">Voyager Skills • Reflexion Verbal RL • 3-Tier Deterministic Verifier</p>
+      </div>
+    </div>
+
+    <!-- ACTION CONTROLS & AUDIO -->
+    <div class="flex items-center space-x-3 font-mono text-xs">
+      <button onclick="toggleAudio()" id="btn-audio" class="px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition flex items-center gap-1.5" title="Toggle Futuristic Audio FX">
+        <i class="fa-solid fa-volume-high text-cyan-400" id="audio-icon"></i>
+        <span class="hidden sm:inline">Audio FX</span>
+      </button>
+
+      <button onclick="exportTelemetry()" class="px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition flex items-center gap-1.5" title="Download SQLite telemetry as JSON">
+        <i class="fa-solid fa-cloud-arrow-down text-emerald-400"></i>
+        <span class="hidden sm:inline">Export</span>
+      </button>
+
+      <button onclick="refreshAllData()" class="px-3 py-1.5 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 transition flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-arrows-rotate text-xs"></i>
+        <span>Sync</span>
+      </button>
+
+      <div class="h-4 w-px bg-white/10"></div>
+      <a href="/privacy" class="text-slate-400 hover:text-cyan-400 transition text-[11px]">Privacy</a>
+      <a href="/terms" class="text-slate-400 hover:text-cyan-400 transition text-[11px]">Terms</a>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6 relative z-10">
+
+    <!-- KPI STATS CARDS ROW (WITH GLOW & ANIMATED COUNTERS) -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <!-- Total Episodes -->
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-cyan-500/5 rounded-full blur-xl group-hover:bg-cyan-500/15 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-mono mb-1">
+          <span>Episodes</span>
+          <i class="fa-solid fa-layer-group text-cyan-400/70"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-white tracking-tight" id="stat-total-episodes">0</div>
+        <div class="text-[10px] font-mono text-slate-500 mt-1 flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> episodes.db
+        </div>
+      </div>
+
+      <!-- Success Rate -->
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/15 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-mono mb-1">
+          <span>Success Rate</span>
+          <i class="fa-solid fa-bullseye text-emerald-400/70"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-emerald-400 tracking-tight" id="stat-success-rate">0.0%</div>
+        <div class="text-[10px] font-mono text-emerald-500/80 mt-1" id="stat-pass-fail-counts">0 passed / 0 failed</div>
+      </div>
+
+      <!-- Avg Steps -->
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-blue-500/5 rounded-full blur-xl group-hover:bg-blue-500/15 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-mono mb-1">
+          <span>Avg Steps</span>
+          <i class="fa-solid fa-shoe-prints text-blue-400/70"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-cyan-300 tracking-tight" id="stat-avg-steps">0.0</div>
+        <div class="text-[10px] font-mono text-slate-500 mt-1">ReAct execution</div>
+      </div>
+
+      <!-- Avg Tokens -->
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/15 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-mono mb-1">
+          <span>Avg Tokens</span>
+          <i class="fa-solid fa-coins text-amber-400/70"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-amber-300 tracking-tight" id="stat-avg-tokens">0.0</div>
+        <div class="text-[10px] font-mono text-slate-500 mt-1 truncate" id="stat-total-tokens">Total: 0 tokens</div>
+      </div>
+
+      <!-- Verified Skills -->
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-violet-500/5 rounded-full blur-xl group-hover:bg-violet-500/15 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-mono mb-1">
+          <span>Skills</span>
+          <i class="fa-solid fa-cube text-violet-400/70"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-violet-300 tracking-tight" id="stat-skills-count">0</div>
+        <div class="text-[10px] font-mono text-slate-500 mt-1">Voyager library</div>
+      </div>
+
+      <!-- Learned Rules -->
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden group">
+        <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-rose-500/5 rounded-full blur-xl group-hover:bg-rose-500/15 transition-all"></div>
+        <div class="flex items-center justify-between text-slate-400 text-xs font-mono mb-1">
+          <span>Reflexions</span>
+          <i class="fa-solid fa-brain text-rose-400/70"></i>
+        </div>
+        <div class="text-2xl font-bold font-mono text-rose-300 tracking-tight" id="stat-lessons-count">0</div>
+        <div class="text-[10px] font-mono text-slate-500 mt-1">Verbal RL heuristics</div>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE AGENT PIPELINE ARCHITECTURE CIRCUIT -->
+    <div class="glass-card rounded-xl p-4 relative overflow-hidden">
+      <div class="flex items-center justify-between mb-3 text-xs font-mono">
+        <span class="text-slate-400 flex items-center gap-2">
+          <i class="fa-solid fa-network-wired text-cyan-400"></i>
+          AUTONOMOUS EXECUTION FLOW CIRCUIT
+        </span>
+        <span class="text-[11px] text-cyan-400/80">Interactive Pipeline Monitor</span>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-6 gap-2.5 text-center text-xs font-mono">
+        <div class="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/40 transition cursor-pointer" onclick="highlightCircuit('goal')">
+          <span class="text-[10px] text-slate-400 block mb-1">STAGE 1</span>
+          <span class="font-bold text-white flex items-center justify-center gap-1.5"><i class="fa-solid fa-flag text-cyan-400"></i> Declarative Goal</span>
+        </div>
+        <div class="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-blue-500/40 transition cursor-pointer" onclick="highlightCircuit('planner')">
+          <span class="text-[10px] text-slate-400 block mb-1">STAGE 2</span>
+          <span class="font-bold text-white flex items-center justify-center gap-1.5"><i class="fa-solid fa-sitemap text-blue-400"></i> LLM Planner</span>
+        </div>
+        <div class="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-amber-500/40 transition cursor-pointer" onclick="highlightCircuit('react')">
+          <span class="text-[10px] text-slate-400 block mb-1">STAGE 3</span>
+          <span class="font-bold text-white flex items-center justify-center gap-1.5"><i class="fa-solid fa-arrows-spin text-amber-400"></i> ReAct Core</span>
+        </div>
+        <div class="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-emerald-500/40 transition cursor-pointer" onclick="highlightCircuit('sandbox')">
+          <span class="text-[10px] text-slate-400 block mb-1">STAGE 4</span>
+          <span class="font-bold text-white flex items-center justify-center gap-1.5"><i class="fa-solid fa-shield text-emerald-400"></i> Tool Sandbox</span>
+        </div>
+        <div class="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-violet-500/40 transition cursor-pointer" onclick="highlightCircuit('verifier')">
+          <span class="text-[10px] text-slate-400 block mb-1">STAGE 5</span>
+          <span class="font-bold text-white flex items-center justify-center gap-1.5"><i class="fa-solid fa-scale-balanced text-violet-400"></i> 3-Tier Verifier</span>
+        </div>
+        <div class="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-rose-500/40 transition cursor-pointer" onclick="highlightCircuit('reflexion')">
+          <span class="text-[10px] text-slate-400 block mb-1">STAGE 6</span>
+          <span class="font-bold text-white flex items-center justify-center gap-1.5"><i class="fa-solid fa-lightbulb text-rose-400"></i> Reflexion RL</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NAVIGATION TABS -->
+    <div class="border-b border-white/10 flex space-x-2 font-mono text-xs overflow-x-auto pb-1">
+      <button onclick="switchTab('run')" id="tab-btn-run" class="tab-btn px-4 py-2.5 rounded-t-lg bg-cyan-500/10 border-b-2 border-cyan-400 text-cyan-300 font-bold flex items-center gap-2 transition">
+        <i class="fa-solid fa-terminal text-cyan-400"></i> Live Console
+      </button>
+      <button onclick="switchTab('playground')" id="tab-btn-playground" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
+        <i class="fa-solid fa-flask-vial text-emerald-400"></i> Sandbox Lab
+      </button>
+      <button onclick="switchTab('history')" id="tab-btn-history" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
+        <i class="fa-solid fa-chart-line text-blue-400"></i> Telemetry & Logs
+      </button>
+      <button onclick="switchTab('memory')" id="tab-btn-memory" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
+        <i class="fa-solid fa-brain text-violet-400"></i> Memory & Rules
+      </button>
+      <button onclick="switchTab('skills')" id="tab-btn-skills" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
+        <i class="fa-solid fa-cubes text-amber-400"></i> Skill Synthesizer
+      </button>
+      <button onclick="switchTab('bench')" id="tab-btn-bench" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
+        <i class="fa-solid fa-vial-circle-check text-rose-400"></i> Benchmark Suite
+      </button>
+    </div>
+
+    <!-- TAB 1: LIVE CONSOLE -->
+    <div id="tab-content-run" class="tab-panel space-y-6">
+      
+      <!-- GOAL INPUT & CONTROLS -->
+      <div class="glass-card rounded-2xl p-6 shadow-2xl relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+            <i class="fa-solid fa-bolt"></i> Autonomous Execution Target
+          </span>
+          <span class="text-[11px] font-mono text-slate-500">Press Ctrl/Cmd + Enter to trigger</span>
+        </div>
+
+        <div class="relative">
+          <textarea id="goal-input" rows="2" class="w-full bg-[#050811] border border-white/10 rounded-xl p-4 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition shadow-inner leading-relaxed" placeholder="Type a high-level goal...">Compute the sum of all prime numbers between 1 and 20</textarea>
+        </div>
+
+        <!-- PRESET CHIPS -->
+        <div class="flex flex-wrap items-center gap-2 mt-3 text-xs font-mono">
+          <span class="text-slate-500 text-[11px]">Quick Scenarios:</span>
+          <button onclick="setPrompt('Compute the sum of all prime numbers between 1 and 20')" class="px-2.5 py-1 rounded-md bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/40 transition text-[11px]">Prime Sum (1-20)</button>
+          <button onclick="setPrompt('Calculate the compound interest on $1000 at 5% annual rate compounded once for 3 years: 1000 * (1 + 0.05)^3')" class="px-2.5 py-1 rounded-md bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/40 transition text-[11px]">Compound Interest</button>
+          <button onclick="setPrompt('Compute 15% tip on a $120.00 restaurant bill.')" class="px-2.5 py-1 rounded-md bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/40 transition text-[11px]">15% Tip on $120</button>
+          <button onclick="setPrompt('Find the median value of the dataset: [12, 5, 22, 30, 7, 9, 18].')" class="px-2.5 py-1 rounded-md bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/40 transition text-[11px]">Dataset Median</button>
+          <button onclick="setPrompt('Calculate the product of 45 and 18 minus 110.')" class="px-2.5 py-1 rounded-md bg-white/5 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/40 transition text-[11px]">45 * 18 - 110</button>
+        </div>
+
+        <!-- CONTROLS & DISPATCH BUTTON -->
+        <div class="pt-4 mt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+          <div class="flex items-center space-x-5 text-slate-300">
+            <label class="flex items-center space-x-2 cursor-pointer group">
+              <input type="checkbox" id="toggle-memory" checked class="rounded border-white/20 bg-black/40 text-cyan-500 focus:ring-0">
+              <span class="group-hover:text-cyan-300 transition">Memory Context</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer group">
+              <input type="checkbox" id="toggle-reflection" checked class="rounded border-white/20 bg-black/40 text-violet-500 focus:ring-0">
+              <span class="group-hover:text-violet-300 transition">Verbal RL</span>
+            </label>
+            <div class="flex items-center space-x-2 text-slate-400">
+              <span>Speed:</span>
+              <select id="execution-speed" class="bg-black/60 border border-white/10 rounded px-2 py-0.5 text-slate-300 focus:outline-none">
+                <option value="animated">Sequential ReAct Stream</option>
+                <option value="instant">Instant Snapshot</option>
+              </select>
+            </div>
+          </div>
+
+          <button onclick="executeAgentTask()" id="btn-run-task" class="relative group px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/25 transition-all">
+            <i class="fa-solid fa-play text-xs"></i>
+            <span>RUN AUTONOMOUS AGENT</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- RESULTS DISPLAY -->
+      <div id="execution-results-container" class="hidden space-y-6">
+        
+        <!-- VERDICT HERO CARD -->
+        <div id="verdict-card" class="glass-card rounded-2xl p-6 border flex items-start justify-between relative overflow-hidden">
+          <div class="space-y-2">
+            <div class="flex items-center space-x-3">
+              <span id="verdict-badge" class="px-3 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider"></span>
+              <h3 id="verdict-title" class="font-bold text-base text-white tracking-wide"></h3>
+            </div>
+            <p id="verdict-evidence" class="text-xs text-slate-300 font-mono"></p>
+            <div class="flex items-center space-x-5 pt-2 text-xs text-slate-400 font-mono">
+              <span id="metric-duration"><i class="fa-regular fa-clock text-cyan-400 mr-1"></i> --s</span>
+              <span id="metric-steps"><i class="fa-solid fa-shoe-prints text-blue-400 mr-1"></i> -- steps</span>
+              <span id="metric-tokens"><i class="fa-solid fa-coins text-amber-400 mr-1"></i> -- tokens</span>
+              <span id="metric-tier"><i class="fa-solid fa-scale-balanced text-violet-400 mr-1"></i> Tier: --</span>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="text-[11px] font-mono text-slate-400 uppercase tracking-wider block font-semibold">Final Output</span>
+            <span id="final-answer-display" class="font-mono text-base font-bold text-cyan-300 block mt-1 px-4 py-1.5 bg-black/60 rounded-lg border border-cyan-500/30 shadow-inner"></span>
+          </div>
+        </div>
+
+        <!-- PLANNER BREAKDOWN -->
+        <div class="glass-card rounded-xl p-5">
+          <h3 class="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-blue-400"></i> Planner Subtask Decomposition
+          </h3>
+          <ul id="plan-subtasks-list" class="space-y-1.5 text-xs font-mono text-slate-300"></ul>
+        </div>
+
+        <!-- SEQUENTIAL REACT STEPPER -->
+        <div class="glass-card rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <i class="fa-solid fa-diagram-project text-cyan-400"></i> ReAct Trajectory (Thought &rarr; Action &rarr; Observation)
+            </h3>
+            <span id="step-count-badge" class="text-xs font-mono text-cyan-400/80"></span>
+          </div>
+
+          <div id="react-trajectory-list" class="space-y-3"></div>
+        </div>
+
+        <!-- EXTRACTED REFLEXION LESSONS -->
+        <div id="reflection-card" class="glass-card rounded-xl p-5 border-violet-500/30 space-y-3">
+          <h3 class="text-xs font-mono font-semibold uppercase tracking-wider text-violet-400 flex items-center gap-2">
+            <i class="fa-solid fa-lightbulb"></i> Extracted Verbal Reinforcement Heuristics
+          </h3>
+          <div id="reflection-lessons-list" class="space-y-2"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 2: SANDBOX PLAYGROUND LAB -->
+    <div id="tab-content-playground" class="tab-panel hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div>
+            <h2 class="text-sm font-mono font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-flask-vial text-emerald-400"></i> Interactive Deterministic Sandbox Lab
+            </h2>
+            <p class="text-xs text-slate-400 font-mono mt-0.5">Test Python code and AST safety policies live without modifying the project files.</p>
+          </div>
+          <div class="flex items-center space-x-2 font-mono text-xs">
+            <button onclick="setPlaygroundSnippet('safe_math')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-white/10 transition">Safe Math</button>
+            <button onclick="setPlaygroundSnippet('os_block')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-white/10 transition">Test Subprocess Block</button>
+            <button onclick="setPlaygroundSnippet('pty_jail')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-white/10 transition">Test AST Import Jail</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-mono text-slate-400 block mb-1.5 font-semibold">Python Execution Input</label>
+            <textarea id="playground-code" rows="8" class="w-full bg-[#050811] border border-white/10 rounded-xl p-3.5 text-xs font-mono text-emerald-400 focus:outline-none focus:border-emerald-500 transition leading-relaxed"># Safe mathematical computation
+data = [10, 25, 45, 80, 120]
+mean_val = sum(data) / len(data)
+print(f"Calculated Mean: {mean_val}")</textarea>
+            
+            <div class="mt-3 flex justify-end">
+              <button onclick="runPlayground()" id="btn-run-playground" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition">
+                <i class="fa-solid fa-play text-xs"></i> Execute in Sandbox
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-mono text-slate-400 block mb-1.5 font-semibold">Sandbox Execution Output</label>
+            <div id="playground-output-container" class="bg-[#050811] border border-white/10 rounded-xl p-3.5 h-[195px] overflow-y-auto text-xs font-mono">
+              <span class="text-slate-500">Execution console output will appear here...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: TELEMETRY & LOGS -->
+    <div id="tab-content-history" class="tab-panel hidden space-y-6">
+      
+      <!-- CHARTS HUD -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="glass-card rounded-xl p-5 flex flex-col items-center justify-center">
+          <span class="text-xs font-mono font-bold text-slate-400 mb-2">Outcome Distribution</span>
+          <div class="w-44 h-44">
+            <canvas id="outcomeDoughnut"></canvas>
+          </div>
+        </div>
+        <div class="glass-card rounded-xl p-5 md:col-span-2">
+          <span class="text-xs font-mono font-bold text-slate-400 mb-2">Steps & Token Resource Consumption</span>
+          <div class="h-44 w-full">
+            <canvas id="stepsBarChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- EPISODES TABLE -->
+      <div class="glass-card rounded-xl overflow-hidden">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between text-xs font-mono">
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-white">Historical Telemetry Stream</span>
+            <span id="history-total-count" class="text-slate-500"></span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <button onclick="loadEpisodes('all')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-300">All</button>
+            <button onclick="loadEpisodes('passed')" class="px-2.5 py-1 rounded bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60 border border-emerald-500/30">Passed</button>
+            <button onclick="loadEpisodes('failed')" class="px-2.5 py-1 rounded bg-rose-950/60 text-rose-400 hover:bg-rose-900/60 border border-rose-500/30">Failed</button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-black/40 border-b border-white/10 text-slate-400">
+              <tr>
+                <th class="py-3 px-4"># ID</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4">Goal Specification</th>
+                <th class="py-3 px-4">Steps</th>
+                <th class="py-3 px-4">Tokens</th>
+                <th class="py-3 px-4">Latency</th>
+                <th class="py-3 px-4">Timestamp</th>
+                <th class="py-3 px-4 text-right">Inspect</th>
+              </tr>
+            </thead>
+            <tbody id="episodes-table-body" class="divide-y divide-white/5 text-slate-300">
+              <tr><td colspan="8" class="text-center py-8 text-slate-500">Loading episodes...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SEMANTIC MEMORY & RULES -->
+    <div id="tab-content-memory" class="tab-panel hidden space-y-6">
+      <div class="glass-card rounded-xl p-5 space-y-3 font-mono text-xs">
+        <span class="font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass text-violet-400"></i> Query In-Context Semantic Memory
+        </span>
+        <div class="flex gap-2">
+          <input type="text" id="memory-search-input" class="flex-1 bg-black/60 border border-white/10 rounded-lg px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500" placeholder="Search learned heuristics (e.g., arithmetic validation, prime search)...">
+          <button onclick="searchMemory()" class="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition">Retrieve Top-K</button>
+        </div>
+        <div id="memory-search-results" class="hidden pt-2 space-y-2"></div>
+      </div>
+
+      <div class="glass-card rounded-xl p-5 space-y-3">
+        <div class="flex items-center justify-between font-mono text-xs">
+          <span class="font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-book-bookmark text-violet-400"></i> Active Reflexion Heuristic Rules
+          </span>
+          <span id="lessons-count-badge" class="text-slate-500"></span>
+        </div>
+        <div id="lessons-catalog-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="col-span-2 text-center py-8 text-slate-500 text-xs font-mono">Loading rules...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: SKILL LIBRARY -->
+    <div id="tab-content-skills" class="tab-panel hidden space-y-6">
+      <div class="glass-card rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between font-mono text-xs">
+          <div>
+            <span class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-cubes text-amber-400"></i> Voyager-Style Executable Skill Library
+            </span>
+            <span class="text-slate-400 block text-[11px] mt-0.5">Self-tested, promoted Python functions callable dynamically by the agent.</span>
+          </div>
+          <button onclick="openAddSkillModal()" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-amber-600/20 transition">
+            <i class="fa-solid fa-plus text-xs"></i> Synthesize Skill
+          </button>
+        </div>
+
+        <div id="skills-catalog-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="col-span-2 text-center py-8 text-slate-500 text-xs font-mono">Loading skills...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: BENCHMARK SUITE -->
+    <div id="tab-content-bench" class="tab-panel hidden space-y-6">
+      <div class="glass-card rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between font-mono text-xs">
+          <div>
+            <span class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-vial-circle-check text-rose-400"></i> Standard Split Evaluation Harness
+            </span>
+            <span class="text-slate-400 block text-[11px] mt-0.5">Automated validation across train, validation, and held-out test splits.</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="runBenchmark('test')" class="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10 transition">Test Split</button>
+            <button onclick="runBenchmark('train')" class="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10 transition">Train Split</button>
+            <button onclick="runBenchmark('val')" class="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10 transition">Validation Split</button>
+          </div>
+        </div>
+
+        <div id="benchmark-results-container" class="hidden pt-4 border-t border-white/10 font-mono">
+          <div class="grid grid-cols-3 gap-4">
+            <div class="bg-black/60 p-4 rounded-xl border border-white/10">
+              <span class="text-xs text-slate-400 block mb-1">Accuracy</span>
+              <span id="bench-success-rate" class="text-2xl font-bold text-emerald-400">--%</span>
+            </div>
+            <div class="bg-black/60 p-4 rounded-xl border border-white/10">
+              <span class="text-xs text-slate-400 block mb-1">Avg Steps</span>
+              <span id="bench-avg-steps" class="text-2xl font-bold text-cyan-400">--</span>
+            </div>
+            <div class="bg-black/60 p-4 rounded-xl border border-white/10">
+              <span class="text-xs text-slate-400 block mb-1">Avg Tokens</span>
+              <span id="bench-avg-tokens" class="text-2xl font-bold text-amber-400">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- DIAGNOSTIC HUD FOOTER BAR -->
+  <div class="border-t border-white/10 bg-[#030712]/90 backdrop-blur px-6 py-2 flex items-center justify-between text-[11px] font-mono text-slate-400 relative z-20">
+    <div class="flex items-center space-x-4">
+      <span class="flex items-center gap-1.5 text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block anim-pulse-glow"></span> API Status: 200 OK</span>
+      <span>&bull;</span>
+      <span>Storage: <span class="text-slate-200">SQLite (episodes.db)</span></span>
+      <span>&bull;</span>
+      <span>Sandbox: <span class="text-cyan-400">Deterministic AST Guard Active</span></span>
+      <span>&bull;</span>
+      <span id="hud-latency">Latency: 2ms</span>
+    </div>
+    <div class="flex items-center space-x-3 text-slate-500">
+      <span>Shortcut: <kbd class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">Ctrl/Cmd + Enter</kbd> to run</span>
+    </div>
+  </div>
+
+  <!-- SITE FOOTER -->
+  <footer class="border-t border-white/5 bg-[#02050c] px-6 py-3.5 flex flex-wrap items-center justify-between text-xs font-mono text-slate-500 relative z-20">
+    <div>
+      Autonomous Agent System &bull; Local Mission Control &bull; Port 8080
+    </div>
+    <div class="flex items-center space-x-4">
+      <a href="/privacy" class="hover:text-cyan-400 transition">Privacy Policy</a>
+      <a href="/terms" class="hover:text-cyan-400 transition">Terms of Service</a>
+    </div>
+  </footer>
+
+  <!-- EPISODE DETAILS MODAL -->
+  <div id="episode-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+    <div class="glass-card rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col font-mono text-xs shadow-2xl border-white/20">
+      <div class="p-4 border-b border-white/10 flex items-center justify-between">
+        <span class="font-bold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-file-code text-cyan-400"></i> Episode Inspection #<span id="modal-episode-id"></span>
+        </span>
+        <button onclick="closeEpisodeModal()" class="text-slate-400 hover:text-white text-base">&times;</button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-4">
+        <div>
+          <span class="text-slate-400 uppercase text-[10px] block mb-1 font-semibold">Goal Specification</span>
+          <div id="modal-episode-goal" class="p-3 bg-black/60 rounded-xl border border-white/10 text-slate-200"></div>
+        </div>
+        <div>
+          <span class="text-slate-400 uppercase text-[10px] block mb-1 font-semibold">Plan Subtasks</span>
+          <ul id="modal-episode-plan" class="space-y-1 text-slate-300"></ul>
+        </div>
+        <div>
+          <span class="text-slate-400 uppercase text-[10px] block mb-1 font-semibold">Execution Trajectory</span>
+          <div id="modal-episode-trajectory" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD SKILL MODAL -->
+  <div id="skill-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+    <div class="glass-card rounded-2xl max-w-lg w-full flex flex-col p-5 space-y-4 font-mono text-xs shadow-2xl border-white/20">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <span class="font-bold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-code text-amber-400"></i> Synthesize & Promote Skill
+        </span>
+        <button onclick="closeAddSkillModal()" class="text-slate-400 hover:text-white text-base">&times;</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="text-slate-400 block mb-1 font-semibold">Function Identifier</label>
+          <input type="text" id="skill-name-input" class="w-full bg-black/60 border border-white/10 rounded-lg p-2 text-white" placeholder="compute_cube">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1 font-semibold">Description</label>
+          <input type="text" id="skill-desc-input" class="w-full bg-black/60 border border-white/10 rounded-lg p-2 text-white" placeholder="Calculates cube of an integer">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1 font-semibold">Python Source Code</label>
+          <textarea id="skill-code-input" rows="4" class="w-full bg-black/60 border border-white/10 rounded-lg p-2 text-emerald-400 font-mono">def compute_cube(x: int) -> int:
+    return x ** 3</textarea>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1 font-semibold">Self-Verification Assertions</label>
+          <textarea id="skill-test-input" rows="2" class="w-full bg-black/60 border border-white/10 rounded-lg p-2 text-cyan-400 font-mono">assert compute_cube(3) == 27
+assert compute_cube(4) == 64</textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-3 border-t border-white/10">
+        <button onclick="closeAddSkillModal()" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300">Cancel</button>
+        <button onclick="submitNewSkill()" class="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold">Verify & Promote</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT ANIMATIONS & SYSTEM LOGIC -->
+  <script>
+    let outcomeChart = null;
+    let stepsChart = null;
+    let audioEnabled = true;
+    let audioCtx = null;
+
+    // --- AUDIO FX SYNTHESIZER ---
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioEnabled) return;
+      try {
+        initAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'success') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+          osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } else if (type === 'error') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.linearRampToValueAtTime(140, now + 0.15);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        }
+      } catch (e) {}
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const icon = document.getElementById('audio-icon');
+      if (audioEnabled) {
+        icon.className = 'fa-solid fa-volume-high text-cyan-400';
+        playSound('click');
+      } else {
+        icon.className = 'fa-solid fa-volume-xmark text-slate-500';
+      }
+    }
+
+    // --- INTERACTIVE NEURAL PARTICLE CANVAS ---
+    const canvas = document.getElementById('neuralCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    let mouse = { x: null, y: null };
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
+        this.radius = Math.random() * 1.5 + 1;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.4)';
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < 45; i++) {
+      particles.push(new Particle());
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(6, 182, 212, ${0.15 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // --- PIPELINE HIGHLIGHT ---
+    function highlightCircuit(stage) {
+      playSound('click');
+      if (stage === 'goal' || stage === 'planner' || stage === 'react') {
+        switchTab('run');
+      } else if (stage === 'sandbox') {
+        switchTab('playground');
+      } else if (stage === 'verifier') {
+        switchTab('bench');
+      } else if (stage === 'reflexion') {
+        switchTab('memory');
+      }
+    }
+
+    // --- TAB SWITCHING ---
+    function switchTab(tabId) {
+      playSound('click');
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('bg-cyan-500/10', 'border-cyan-400', 'text-cyan-300', 'font-bold');
+        b.classList.add('border-transparent', 'text-slate-400');
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+
+      const activeBtn = document.getElementById('tab-btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-cyan-500/10', 'border-cyan-400', 'text-cyan-300', 'font-bold');
+        activeBtn.classList.remove('border-transparent', 'text-slate-400');
+      }
+      const activePanel = document.getElementById('tab-content-' + tabId);
+      if (activePanel) activePanel.classList.remove('hidden');
+
+      if (tabId === 'history') loadEpisodes('all');
+      else if (tabId === 'memory') loadLessons();
+      else if (tabId === 'skills') loadSkills();
+    }
+
+    function setPrompt(txt) {
+      playSound('click');
+      document.getElementById('goal-input').value = txt;
+    }
+
+    // --- STATS & COUNTERS ---
+    async function fetchStats() {
+      const t0 = performance.now();
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        const latency = Math.round(performance.now() - t0);
+        document.getElementById('hud-latency').innerText = `Latency: ${latency}ms`;
+        
+        animateCounter('stat-total-episodes', data.total_episodes || 0);
+        const rate = data.summary.success_rate !== undefined ? (data.summary.success_rate * 100).toFixed(1) : '0.0';
+        document.getElementById('stat-success-rate').innerText = rate + '%';
+        document.getElementById('stat-pass-fail-counts').innerText = `${data.passed_count} passed / ${data.failed_count} failed`;
+        document.getElementById('stat-avg-steps').innerText = data.summary.avg_steps || '0.0';
+        document.getElementById('stat-avg-tokens').innerText = data.summary.avg_tokens || '0.0';
+        document.getElementById('stat-total-tokens').innerText = `Total: ${data.total_tokens.toLocaleString()} tokens`;
+        animateCounter('stat-skills-count', data.skills_count || 0);
+        animateCounter('stat-lessons-count', data.lessons_count || 0);
+
+        renderOutcomeChart(data.passed_count, data.failed_count);
+      } catch (e) {
+        console.error('Failed to fetch stats:', e);
+      }
+    }
+
+    function animateCounter(id, target) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const start = parseInt(el.innerText) || 0;
+      if (start === target) { el.innerText = target; return; }
+      let current = start;
+      const step = Math.max(1, Math.floor(Math.abs(target - start) / 10));
+      const interval = setInterval(() => {
+        if (current < target) current = Math.min(target, current + step);
+        else current = Math.max(target, current - step);
+        el.innerText = current;
+        if (current === target) clearInterval(interval);
+      }, 30);
+    }
+
+    function renderOutcomeChart(passed, failed) {
+      const ctx = document.getElementById('outcomeDoughnut');
+      if (!ctx) return;
+      if (outcomeChart) outcomeChart.destroy();
+
+      outcomeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Passed', 'Failed'],
+          datasets: [{
+            data: [passed, failed],
+            backgroundColor: ['#10b981', '#f43f5e'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'monospace', size: 10 }, boxWidth: 10 } }
+          },
+          cutout: '70%'
+        }
+      });
+    }
+
+    // --- TASK EXECUTION WITH SEQUENTIAL STREAM ANIMATION ---
+    async function executeAgentTask() {
+      const goal = document.getElementById('goal-input').value.trim();
+      if (!goal) return alert('Goal specification required.');
+
+      playSound('click');
+      const btn = document.getElementById('btn-run-task');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-atom fa-spin"></i> Executing ReAct Loop...`;
+
+      const useMem = document.getElementById('toggle-memory').checked;
+      const useRef = document.getElementById('toggle-reflection').checked;
+      const speed = document.getElementById('execution-speed').value;
+
+      try {
+        const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ goal, use_memory: useMem, use_reflection: useRef })
+        });
+        const data = await res.json();
+        
+        if (speed === 'animated') {
+          await renderAnimatedExecution(data);
+        } else {
+          renderExecutionResult(data);
+        }
+        
+        if (data.passed) playSound('success');
+        else playSound('error');
+
+        fetchStats();
+      } catch (err) {
+        playSound('error');
+        alert('Execution failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-play text-xs"></i> <span>RUN AUTONOMOUS AGENT</span>`;
+      }
+    }
+
+    async function renderAnimatedExecution(data) {
+      const c = document.getElementById('execution-results-container');
+      c.classList.remove('hidden');
+
+      // 1. Planner subtasks
+      const planList = document.getElementById('plan-subtasks-list');
+      planList.innerHTML = '';
+      if (data.plan && data.plan.subtasks) {
+        data.plan.subtasks.forEach((st, i) => {
+          planList.innerHTML += `<li class="flex items-center gap-2 text-slate-300 font-mono"><span class="w-4 h-4 rounded bg-cyan-950 text-cyan-400 font-bold text-center leading-4 text-[10px]">[${i+1}]</span> ${st}</li>`;
+        });
+      }
+
+      // 2. Clear ReAct trajectory
+      const trajList = document.getElementById('react-trajectory-list');
+      trajList.innerHTML = '';
+      document.getElementById('step-count-badge').innerText = `Executing...`;
+
+      // Animate steps sequentially
+      for (let i = 0; i < data.execution.trajectory.length; i++) {
+        const step = data.execution.trajectory[i];
+        let actionBadge = '';
+        if (step.action_name) {
+          actionBadge = `<span class="px-2.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 font-mono text-[11px] border border-cyan-500/40">${step.action_name}(${JSON.stringify(step.action_args)})</span>`;
+        }
+
+        const stepEl = document.createElement('div');
+        stepEl.className = 'glass-card rounded-xl p-4 space-y-2 text-xs font-mono border-white/10 opacity-0 transition-opacity duration-500';
+        stepEl.innerHTML = `
+          <div class="flex items-center justify-between text-slate-400 border-b border-white/5 pb-1.5">
+            <span class="font-bold text-white flex items-center gap-2"><i class="fa-solid fa-circle-dot text-cyan-400 text-[10px]"></i> Step ${step.step_index}</span>
+            <span class="text-[10px] text-slate-500">${step.tokens_used} tokens • ${step.duration_sec}s</span>
+          </div>
+          <div>
+            <span class="text-slate-500 uppercase text-[10px] block font-semibold">Thought</span>
+            <p class="text-slate-300 mt-0.5">${step.thought}</p>
+          </div>
+          ${step.action_name ? `<div><span class="text-slate-500 uppercase text-[10px] block font-semibold">Tool Action</span><div class="mt-1">${actionBadge}</div></div>` : ''}
+          ${step.observation ? `<div><span class="text-slate-500 uppercase text-[10px] block font-semibold">Observation</span><pre class="bg-black/60 p-2.5 rounded-lg text-[11px] text-emerald-400 mt-1 overflow-x-auto whitespace-pre-wrap border border-white/5">${step.observation}</pre></div>` : ''}
+        `;
+        trajList.appendChild(stepEl);
+        playSound('click');
+        setTimeout(() => stepEl.classList.remove('opacity-0'), 20);
+        await new Promise(r => setTimeout(r, 400));
+      }
+
+      document.getElementById('step-count-badge').innerText = `${data.execution.trajectory.length} Iterations Finished`;
+
+      // 3. Final verdict banner
+      renderVerdictBanner(data);
+    }
+
+    function renderExecutionResult(data) {
+      const c = document.getElementById('execution-results-container');
+      c.classList.remove('hidden');
+
+      const planList = document.getElementById('plan-subtasks-list');
+      planList.innerHTML = '';
+      if (data.plan && data.plan.subtasks) {
+        data.plan.subtasks.forEach((st, i) => {
+          planList.innerHTML += `<li class="flex items-center gap-2 text-slate-300 font-mono"><span class="w-4 h-4 rounded bg-cyan-950 text-cyan-400 font-bold text-center leading-4 text-[10px]">[${i+1}]</span> ${st}</li>`;
+        });
+      }
+
+      const trajList = document.getElementById('react-trajectory-list');
+      trajList.innerHTML = '';
+      document.getElementById('step-count-badge').innerText = `${data.execution.trajectory.length} Iterations`;
+
+      data.execution.trajectory.forEach((step) => {
+        let actionBadge = '';
+        if (step.action_name) {
+          actionBadge = `<span class="px-2.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 font-mono text-[11px] border border-cyan-500/40">${step.action_name}(${JSON.stringify(step.action_args)})</span>`;
+        }
+
+        trajList.innerHTML += `
+          <div class="glass-card rounded-xl p-4 space-y-2 text-xs font-mono border-white/10">
+            <div class="flex items-center justify-between text-slate-400 border-b border-white/5 pb-1.5">
+              <span class="font-bold text-white flex items-center gap-2"><i class="fa-solid fa-circle-dot text-cyan-400 text-[10px]"></i> Step ${step.step_index}</span>
+              <span class="text-[10px] text-slate-500">${step.tokens_used} tokens • ${step.duration_sec}s</span>
+            </div>
+            <div>
+              <span class="text-slate-500 uppercase text-[10px] block font-semibold">Thought</span>
+              <p class="text-slate-300 mt-0.5">${step.thought}</p>
+            </div>
+            ${step.action_name ? `<div><span class="text-slate-500 uppercase text-[10px] block font-semibold">Tool Action</span><div class="mt-1">${actionBadge}</div></div>` : ''}
+            ${step.observation ? `<div><span class="text-slate-500 uppercase text-[10px] block font-semibold">Observation</span><pre class="bg-black/60 p-2.5 rounded-lg text-[11px] text-emerald-400 mt-1 overflow-x-auto whitespace-pre-wrap border border-white/5">${step.observation}</pre></div>` : ''}
+          </div>
+        `;
+      });
+
+      renderVerdictBanner(data);
+    }
+
+    function renderVerdictBanner(data) {
+      const vCard = document.getElementById('verdict-card');
+      const vBadge = document.getElementById('verdict-badge');
+      const vTitle = document.getElementById('verdict-title');
+      const vEvid = document.getElementById('verdict-evidence');
+      const vAns = document.getElementById('final-answer-display');
+
+      if (data.passed) {
+        vCard.className = 'glass-card rounded-2xl p-6 border border-emerald-500/40 bg-emerald-950/20 flex items-start justify-between relative shadow-xl shadow-emerald-500/10';
+        vBadge.className = 'px-3 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        vBadge.innerText = 'VERIFICATION PASSED';
+        vTitle.innerText = 'Objective Solved & Formally Verified';
+      } else {
+        vCard.className = 'glass-card rounded-2xl p-6 border border-rose-500/40 bg-rose-950/20 flex items-start justify-between relative shadow-xl shadow-rose-500/10';
+        vBadge.className = 'px-3 py-1 rounded-md text-xs font-mono font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/40';
+        vBadge.innerText = 'VERIFICATION FAILED';
+        vTitle.innerText = 'Verification Inconsistency Detected';
+      }
+
+      vEvid.innerText = data.verdict.evidence || 'No execution error.';
+      vAns.innerText = data.execution.answer || 'N/A';
+      document.getElementById('metric-duration').innerHTML = `<i class="fa-regular fa-clock text-cyan-400 mr-1"></i> ${data.execution.duration_sec}s`;
+      document.getElementById('metric-steps').innerHTML = `<i class="fa-solid fa-shoe-prints text-blue-400 mr-1"></i> ${data.execution.total_steps} steps`;
+      document.getElementById('metric-tokens').innerHTML = `<i class="fa-solid fa-coins text-amber-400 mr-1"></i> ${data.execution.total_tokens} tokens`;
+      document.getElementById('metric-tier').innerHTML = `<i class="fa-solid fa-scale-balanced text-violet-400 mr-1"></i> Tier: ${data.verdict.verifier_tier}`;
+
+      // Reflection
+      const refCard = document.getElementById('reflection-card');
+      const refList = document.getElementById('reflection-lessons-list');
+      refList.innerHTML = '';
+
+      if (data.reflection && data.reflection.lessons && data.reflection.lessons.length > 0) {
+        refCard.classList.remove('hidden');
+        data.reflection.lessons.forEach(l => {
+          refList.innerHTML += `
+            <div class="p-3 bg-black/60 border border-violet-500/30 rounded-xl text-xs font-mono space-y-1">
+              <div class="flex items-center justify-between text-violet-300 font-bold">
+                <span>Rule: ${l.rule}</span>
+                <span class="text-[10px] text-slate-400">Trust: ${l.trust_weight}</span>
+              </div>
+              <div class="text-slate-400 text-[11px]">Situation: ${l.situation}</div>
+              <div class="text-slate-500 text-[11px]">Root Cause: ${l.root_cause}</div>
+            </div>
+          `;
+        });
+      } else {
+        refCard.classList.add('hidden');
+      }
+
+      vCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // --- SANDBOX LAB PLAYGROUND ---
+    function setPlaygroundSnippet(type) {
+      playSound('click');
+      const codeEl = document.getElementById('playground-code');
+      if (type === 'safe_math') {
+        codeEl.value = `# Safe mathematical computation\ndata = [10, 25, 45, 80, 120]\nmean_val = sum(data) / len(data)\nprint(f"Calculated Mean: {mean_val}")`;
+      } else if (type === 'os_block') {
+        codeEl.value = `# Malicious subprocess invocation\nimport os\nos.system('echo Attempting to compromise host')`;
+      } else if (type === 'pty_jail') {
+        codeEl.value = `# Restricted pty import attempt\nimport pty\npty.spawn('/bin/bash')`;
+      }
+    }
+
+    async function runPlayground() {
+      playSound('click');
+      const input = document.getElementById('playground-code').value.trim();
+      const btn = document.getElementById('btn-run-playground');
+      const outContainer = document.getElementById('playground-output-container');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sandboxing...`;
+
+      try {
+        const res = await fetch('/api/sandbox/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'python', input })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+          playSound('success');
+          outContainer.innerHTML = `
+            <div class="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-400">
+              <span class="font-bold flex items-center gap-1.5 mb-1"><i class="fa-solid fa-check"></i> SANDBOX EXECUTION SUCCESS</span>
+              <pre class="text-slate-200 mt-1 whitespace-pre-wrap">${data.output || '(No output returned)'}</pre>
+            </div>
+          `;
+        } else {
+          playSound('error');
+          outContainer.innerHTML = `
+            <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-400">
+              <span class="font-bold flex items-center gap-1.5 mb-1"><i class="fa-solid fa-shield-halved"></i> AST SECURITY POLICY VIOLATION INTERCEPTED</span>
+              <pre class="text-rose-300 mt-1 whitespace-pre-wrap">${data.error}</pre>
+            </div>
+          `;
+        }
+      } catch (err) {
+        playSound('error');
+        outContainer.innerHTML = `<span class="text-rose-400">Sandbox error: ${err.message}</span>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-play text-xs"></i> Execute in Sandbox`;
+      }
+    }
+
+    // --- TELEMETRY EXPORT ---
+    async function exportTelemetry() {
+      playSound('click');
+      try {
+        const res = await fetch('/api/export');
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `agent-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        alert('Export error: ' + e.message);
+      }
+    }
+
+    // --- EPISODES LIST & CHARTS ---
+    async function loadEpisodes(status = 'all') {
+      try {
+        const res = await fetch(`/api/episodes?status=${status}&limit=50`);
+        const data = await res.json();
+        
+        document.getElementById('history-total-count').innerText = `(${data.episodes.length} runs)`;
+        const tbody = document.getElementById('episodes-table-body');
+        tbody.innerHTML = '';
+
+        const stepsData = [];
+        const tokensData = [];
+        const labelsData = [];
+
+        data.episodes.slice(0, 15).reverse().forEach(ep => {
+          labelsData.push(`#${ep.id}`);
+          stepsData.push(ep.total_steps);
+          tokensData.push(ep.total_tokens);
+        });
+
+        renderStepsBarChart(labelsData, stepsData, tokensData);
+
+        data.episodes.forEach(ep => {
+          const badge = ep.passed
+            ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PASSED</span>`
+            : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">FAILED</span>`;
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-white/5 transition">
+              <td class="py-2.5 px-4 text-slate-400">#${ep.id}</td>
+              <td class="py-2.5 px-4">${badge}</td>
+              <td class="py-2.5 px-4 text-slate-200 max-w-xs truncate" title="${ep.goal}">${ep.goal}</td>
+              <td class="py-2.5 px-4 text-cyan-400 font-bold">${ep.total_steps}</td>
+              <td class="py-2.5 px-4 text-amber-400 font-bold">${ep.total_tokens}</td>
+              <td class="py-2.5 px-4 text-slate-400">${ep.duration_sec.toFixed(2)}s</td>
+              <td class="py-2.5 px-4 text-slate-500 text-[10px]">${ep.timestamp.split('T')[1]?.slice(0,8) || ep.timestamp}</td>
+              <td class="py-2.5 px-4 text-right">
+                <button onclick="viewEpisodeModal(${ep.id})" class="text-cyan-400 hover:text-cyan-300 font-bold"><i class="fa-solid fa-eye"></i></button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        console.error('Failed to load episodes:', err);
+      }
+    }
+
+    function renderStepsBarChart(labels, steps, tokens) {
+      const ctx = document.getElementById('stepsBarChart');
+      if (!ctx) return;
+      if (stepsChart) stepsChart.destroy();
+
+      stepsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Steps', data: steps, backgroundColor: 'rgba(6, 182, 212, 0.7)', borderRadius: 4, yAxisID: 'y' },
+            { label: 'Tokens', data: tokens, backgroundColor: 'rgba(245, 158, 11, 0.7)', borderRadius: 4, yAxisID: 'y1' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }, grid: { display: false } },
+            y: { type: 'linear', position: 'left', ticks: { color: '#06b6d4', font: { family: 'monospace', size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f59e0b', font: { family: 'monospace', size: 10 } } }
+          },
+          plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'monospace', size: 10 } } } }
+        }
+      });
+    }
+
+    async function viewEpisodeModal(id) {
+      playSound('click');
+      try {
+        const res = await fetch(`/api/episodes/${id}`);
+        const data = await res.json();
+
+        document.getElementById('modal-episode-id').innerText = data.id;
+        document.getElementById('modal-episode-goal').innerText = data.goal;
+
+        const planEl = document.getElementById('modal-episode-plan');
+        planEl.innerHTML = '';
+        if (data.plan && data.plan.subtasks) {
+          data.plan.subtasks.forEach(s => planEl.innerHTML += `<li>&bull; ${s}</li>`);
+        }
+
+        const trajEl = document.getElementById('modal-episode-trajectory');
+        trajEl.innerHTML = '';
+        data.trajectory.forEach(t => {
+          trajEl.innerHTML += `
+            <div class="p-3 bg-black/60 rounded-xl border border-white/10 space-y-1">
+              <div class="text-cyan-400 font-bold">Step ${t.step_index}: ${t.action_name || 'finish'}</div>
+              <div class="text-slate-300">${t.thought}</div>
+              ${t.observation ? `<div class="text-emerald-400 text-[11px] font-mono mt-1">Obs: ${t.observation}</div>` : ''}
+            </div>
+          `;
+        });
+
+        document.getElementById('episode-modal').classList.remove('hidden');
+      } catch (err) {
+        alert('Failed to load episode: ' + err.message);
+      }
+    }
+
+    function closeEpisodeModal() {
+      document.getElementById('episode-modal').classList.add('hidden');
+    }
+
+    // --- LESSONS & SKILLS ---
+    async function loadLessons() {
+      try {
+        const res = await fetch('/api/lessons');
+        const data = await res.json();
+        document.getElementById('lessons-count-badge').innerText = `(${data.lessons.length} rules)`;
+
+        const list = document.getElementById('lessons-catalog-list');
+        list.innerHTML = '';
+
+        data.lessons.forEach(l => {
+          list.innerHTML += `
+            <div class="glass-card rounded-xl p-4 space-y-2 font-mono text-xs border-violet-500/20">
+              <div class="flex items-center justify-between text-violet-300 font-bold">
+                <span>Rule: ${l.rule}</span>
+                <span class="text-[10px] text-slate-400">Trust: ${l.trust_weight}</span>
+              </div>
+              <div class="text-[11px] text-slate-400">Situation: ${l.situation}</div>
+              <div class="text-[11px] text-slate-500">Root Cause: ${l.root_cause}</div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error('Failed to load lessons:', err);
+      }
+    }
+
+    async function searchMemory() {
+      playSound('click');
+      const q = document.getElementById('memory-search-input').value.trim();
+      if (!q) return;
+
+      const res = await fetch('/api/lessons/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q })
+      });
+      const data = await res.json();
+      const container = document.getElementById('memory-search-results');
+      container.classList.remove('hidden');
+      container.innerHTML = '';
+
+      if (data.results.length === 0) {
+        container.innerHTML = `<div class="text-slate-500 text-xs py-2">No matching rules found.</div>`;
+        return;
+      }
+
+      data.results.forEach(r => {
+        container.innerHTML += `
+          <div class="p-3 bg-violet-950/30 border border-violet-500/40 rounded-xl text-xs font-mono space-y-1">
+            <span class="font-bold text-violet-300 block">${r.rule}</span>
+            <span class="text-slate-400 text-[11px] block">${r.situation} (Trust: ${r.trust_weight})</span>
+          </div>
+        `;
+      });
+    }
+
+    async function loadSkills() {
+      try {
+        const res = await fetch('/api/skills');
+        const data = await res.json();
+        const list = document.getElementById('skills-catalog-list');
+        list.innerHTML = '';
+
+        data.skills.forEach(s => {
+          list.innerHTML += `
+            <div class="glass-card rounded-xl p-4 space-y-2 font-mono text-xs border-amber-500/20">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-white text-sm">${s.name}()</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.is_verified ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'}">
+                  ${s.is_verified ? 'VERIFIED' : 'PENDING'}
+                </span>
+              </div>
+              <p class="text-slate-400 text-[11px]">${s.description}</p>
+              <pre class="bg-black/60 p-2.5 rounded-lg text-[11px] text-amber-300 overflow-x-auto border border-white/5">${s.code}</pre>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error('Failed to load skills:', err);
+      }
+    }
+
+    function openAddSkillModal() {
+      playSound('click');
+      document.getElementById('skill-modal').classList.remove('hidden');
+    }
+
+    function closeAddSkillModal() {
+      document.getElementById('skill-modal').classList.add('hidden');
+    }
+
+    async function submitNewSkill() {
+      playSound('click');
+      const name = document.getElementById('skill-name-input').value.trim();
+      const description = document.getElementById('skill-desc-input').value.trim();
+      const code = document.getElementById('skill-code-input').value.trim();
+      const test_code = document.getElementById('skill-test-input').value.trim();
+
+      const res = await fetch('/api/skills/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, code, test_code })
+      });
+      const data = await res.json();
+      if (data.is_verified) playSound('success');
+      else playSound('error');
+      alert(data.message);
+      closeAddSkillModal();
+      loadSkills();
+      fetchStats();
+    }
+
+    async function runBenchmark(split) {
+      playSound('click');
+      const container = document.getElementById('benchmark-results-container');
+      container.classList.remove('hidden');
+
+      document.getElementById('bench-success-rate').innerText = 'Testing...';
+      document.getElementById('bench-avg-steps').innerText = '--';
+      document.getElementById('bench-avg-tokens').innerText = '--';
+
+      const res = await fetch('/api/eval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ split: split })
+      });
+      const data = await res.json();
+      document.getElementById('bench-success-rate').innerText = data.metrics.success_rate + '%';
+      document.getElementById('bench-avg-steps').innerText = data.metrics.avg_steps;
+      document.getElementById('bench-avg-tokens').innerText = data.metrics.avg_tokens;
+      playSound('success');
+      fetchStats();
+    }
+
+    function refreshAllData() {
+      playSound('click');
+      fetchStats();
+    }
+
+    // --- KEYBOARD SHORTCUTS ---
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchStats();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        const goalInput = document.getElementById('goal-input');
+        if (goalInput && document.activeElement === goalInput) {
+          executeAgentTask();
+        }
+      }
+      if (e.key === 'Escape') {
+        closeEpisodeModal();
+        closeAddSkillModal();
+      }
+    });
+  </script>
+
+</body>
+</html>
