@@ -6,6 +6,7 @@ from agent.planner import Planner, Plan
 from agent.verifier import Verifier, Verdict
 from agent.reflector import Reflector, ReflectionResult, StructuredLesson
 from agent.orchestrator import Orchestrator, TaskRunReport
+from agent.delegator import SubagentDelegator, DelegationTask, DelegationResult
 
 __all__ = [
     "LLMInterface",
@@ -23,5 +24,8 @@ __all__ = [
     "StructuredLesson",
     "Orchestrator",
     "TaskRunReport",
+    "SubagentDelegator",
+    "DelegationTask",
+    "DelegationResult",
 ]
 
