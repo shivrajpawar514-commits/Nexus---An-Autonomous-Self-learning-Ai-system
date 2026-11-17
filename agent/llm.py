@@ -195,6 +195,14 @@ class MockLLM(LLMInterface):
                 return "Thought: Calculating median of dataset.\nAction: run_python(code='data = sorted([12, 5, 22, 30, 7, 9, 18])\\nprint(float(data[len(data)//2]))')"
             if "2 to the power of 8" in prompt_lower:
                 return "Thought: Calculating 2^8 / 4.\nAction: calculator(expression='pow(2, 8) / 4')"
+            if "hypotenuse" in prompt_lower or ("21" in prompt_lower and "28" in prompt_lower):
+                return "Thought: Calculating hypotenuse sqrt(21^2 + 28^2).\nAction: calculator(expression='sqrt(pow(21, 2) + pow(28, 2))')"
+            if "volume of a sphere" in prompt_lower or "4/3 * pi" in prompt_lower:
+                return "Thought: Calculating sphere volume.\nAction: calculator(expression='(4.0/3.0) * pi * pow(3, 3)')"
+            if "25 percent of 480" in prompt_lower or "480 plus 35" in prompt_lower:
+                return "Thought: Calculating 25% of 480 plus 35.\nAction: calculator(expression='(0.25 * 480) + 35')"
+            if "surface area of a cube" in prompt_lower or "6 * 6^2" in prompt_lower:
+                return "Thought: Calculating surface area of cube 6 * 6^2.\nAction: calculator(expression='6 * pow(6, 2)')"
             if "calculator" in prompt_lower or any(op in prompt for op in ["+", "*", "/", "^"]):
                 math_match = re.search(r"(\d+[\s\*\+\-\/\^]+\d+[\s\*\+\-\/\d]*)", prompt)
                 expr = math_match.group(1).replace("^", "**") if math_match else "15 * 4 + 10"

@@ -36,6 +36,13 @@ BENCHMARK_TASKS: List[BenchmarkTask] = [
         expected_output=100.0,
         checker_name="exact_number",
     ),
+    BenchmarkTask(
+        id="train-04",
+        goal="Calculate the hypotenuse of a right triangle with legs 21 and 28: sqrt(21^2 + 28^2).",
+        split="train",
+        expected_output=35.0,
+        checker_name="exact_number",
+    ),
     # Validation Split (Hyperparameter & prompt calibration)
     BenchmarkTask(
         id="val-01",
@@ -49,6 +56,13 @@ BENCHMARK_TASKS: List[BenchmarkTask] = [
         goal="Calculate 2 to the power of 8 divided by 4.",
         split="val",
         expected_output=64.0,
+        checker_name="exact_number",
+    ),
+    BenchmarkTask(
+        id="val-03",
+        goal="Calculate the volume of a sphere with radius 3: (4/3) * pi * 3^3.",
+        split="val",
+        expected_output=113.097,
         checker_name="exact_number",
     ),
     # Test Split (HELD-OUT: Never touched during learning/reflection)
@@ -71,6 +85,20 @@ BENCHMARK_TASKS: List[BenchmarkTask] = [
         goal="Calculate the product of 45 and 18 minus 110.",
         split="test",
         expected_output=700.0,
+        checker_name="exact_number",
+    ),
+    BenchmarkTask(
+        id="test-04",
+        goal="Compute 25 percent of 480 plus 35.",
+        split="test",
+        expected_output=155.0,
+        checker_name="exact_number",
+    ),
+    BenchmarkTask(
+        id="test-05",
+        goal="Calculate the surface area of a cube with edge length 6: 6 * 6^2.",
+        split="test",
+        expected_output=216.0,
         checker_name="exact_number",
     ),
 ]

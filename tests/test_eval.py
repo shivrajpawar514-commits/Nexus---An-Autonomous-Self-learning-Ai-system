@@ -28,7 +28,7 @@ def test_evaluate_split_execution():
 
     metrics = evaluate_split(orchestrator, split="test", use_memory=True, use_reflection=False)
 
-    assert metrics["total_tasks"] == 3
+    assert metrics["total_tasks"] == 5
     assert metrics["success_rate"] == 100.0
     assert metrics["avg_steps"] > 0.0
     assert metrics["avg_tokens"] > 0.0
