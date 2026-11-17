@@ -115,6 +115,22 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(svg.encode("utf-8"))
             return
 
+        # API: Real-time SSE Stream Heartbeat & Event Channel
+        if path == "/api/stream":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                init_data = json.dumps({"type": "connected", "timestamp": time.time(), "status": "active"})
+                self.wfile.write(f"data: {init_data}\n\n".encode("utf-8"))
+                self.wfile.flush()
+            except Exception:
+                pass
+            return
+
         # API: Telemetry Stats
         if path == "/api/stats":
             stats = orch.episodic_memory.get_summary_stats()
@@ -376,6 +392,47 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "retrieved_skills": report.retrieved_skills,
             }
             self._send_json(result)
+            return
+
+        # API: Real-time Streaming Task Execution (SSE)
+        if path == "/api/stream_task":
+            goal = payload.get("goal", "").strip()
+            if not goal:
+                self._send_json({"error": "Goal cannot be empty"}, status=400)
+                return
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+
+            def send_event(event_type: str, data: dict):
+                try:
+                    payload_str = json.dumps({"event": event_type, "data": data})
+                    self.wfile.write(f"data: {payload_str}\n\n".encode("utf-8"))
+                    self.wfile.flush()
+                except Exception:
+                    pass
+
+            send_event("start", {"goal": goal})
+            report = orch.run_task(goal=goal, use_memory=True, use_reflection=True)
+            for step in report.execution.trajectory:
+                send_event("step", {
+                    "step_index": step.step_index,
+                    "thought": step.thought,
+                    "action_name": step.action_name,
+                    "action_args": step.action_args,
+                    "observation": step.observation,
+                })
+            send_event("verdict", {
+                "passed": report.passed,
+                "score": report.verdict.score,
+                "evidence": report.verdict.evidence,
+                "answer": report.execution.answer,
+            })
+            send_event("complete", {"status": "done"})
             return
 
         # API: Search Semantic Memory
