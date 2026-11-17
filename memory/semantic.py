@@ -31,11 +31,13 @@ class MemoryItem(BaseModel):
 
 
 class SimpleVectorIndex:
-    """Lightweight, self-contained semantic vector index using TF-IDF character/word n-grams."""
+    """Lightweight, high-performance semantic vector index with LRU token caching."""
 
     def __init__(self):
         self.vocab: Dict[str, int] = {}
         self.vectors: Dict[str, np.ndarray] = {}
+        self._vector_cache: Dict[str, np.ndarray] = {}
+        self._cached_vocab_len: int = 0
 
     def _tokenize(self, text: str) -> List[str]:
         words = [w.strip().lower() for w in text.split() if len(w) > 2]
@@ -48,6 +50,9 @@ class SimpleVectorIndex:
         return words + ngrams
 
     def get_or_create_vector(self, text: str) -> np.ndarray:
+        if self._cached_vocab_len == len(self.vocab) and text in self._vector_cache:
+            return self._vector_cache[text]
+
         tokens = self._tokenize(text)
         for t in tokens:
             if t not in self.vocab:
@@ -61,6 +66,9 @@ class SimpleVectorIndex:
         norm = np.linalg.norm(vec)
         if norm > 0:
             vec /= norm
+
+        self._vector_cache[text] = vec
+        self._cached_vocab_len = len(self.vocab)
         return vec
 
     def compute_similarity(self, query: str, doc_vec: np.ndarray) -> float:
