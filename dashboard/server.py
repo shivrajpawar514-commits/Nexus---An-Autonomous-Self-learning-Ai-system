@@ -21,6 +21,7 @@ from eval.run import evaluate_split, run_learning_cycle
 from memory.episodic import EpisodicMemory
 from memory.semantic import SemanticMemory
 from memory.skills import SkillLibrary
+from memory.knowledge_graph import KnowledgeGraph
 from tools.base import get_default_registry
 from tools.python_sandbox import run_python
 from tools.calculator import calculate
@@ -36,6 +37,18 @@ global_orchestrator: Optional[Orchestrator] = None
 global_blackboard: Optional[Blackboard] = None
 global_consensus: Optional[ConsensusEngine] = None
 global_plugin_manager: Optional[PluginManager] = None
+global_knowledge_graph: Optional[KnowledgeGraph] = None
+
+
+def get_knowledge_graph() -> KnowledgeGraph:
+    global global_knowledge_graph
+    if global_knowledge_graph is None:
+        global_knowledge_graph = KnowledgeGraph()
+        # Seed core architecture relationships
+        global_knowledge_graph.add_triple("ReActExecutor", "USES", "ToolRegistry", 1.0)
+        global_knowledge_graph.add_triple("PythonSandbox", "PREVENTS", "FilesystemEscape", 0.95)
+        global_knowledge_graph.add_triple("SemanticMemory", "PROVIDES", "ReflectedLessons", 0.9)
+    return global_knowledge_graph
 
 
 def get_plugin_manager() -> PluginManager:
@@ -318,6 +331,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/plugins":
             pm = get_plugin_manager()
             self._send_json({"plugins": pm.list_plugins()})
+            return
+
+        # API: Knowledge Graph Triples & Visualization
+        if path == "/api/knowledge-graph":
+            kg = get_knowledge_graph()
+            self._send_json(kg.export_graph_json())
             return
 
         # API: Single Episode Details
