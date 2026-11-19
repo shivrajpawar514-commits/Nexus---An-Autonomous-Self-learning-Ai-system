@@ -22,6 +22,7 @@ from memory.episodic import EpisodicMemory
 from memory.semantic import SemanticMemory
 from memory.skills import SkillLibrary
 from memory.knowledge_graph import KnowledgeGraph
+from safety.policy_engine import PolicyEngine, ActionPolicy, EffectType
 from tools.base import get_default_registry
 from tools.python_sandbox import run_python
 from tools.calculator import calculate
@@ -38,6 +39,23 @@ global_blackboard: Optional[Blackboard] = None
 global_consensus: Optional[ConsensusEngine] = None
 global_plugin_manager: Optional[PluginManager] = None
 global_knowledge_graph: Optional[KnowledgeGraph] = None
+global_policy_engine: Optional[PolicyEngine] = None
+
+
+def get_policy_engine() -> PolicyEngine:
+    global global_policy_engine
+    if global_policy_engine is None:
+        global_policy_engine = PolicyEngine()
+        # Seed default protection policy
+        global_policy_engine.add_policy(
+            ActionPolicy(
+                id="default_protection",
+                name="Block System Shutdown",
+                effect=EffectType.DENY,
+                actions=["system_shutdown", "wipe_database"],
+            )
+        )
+    return global_policy_engine
 
 
 def get_knowledge_graph() -> KnowledgeGraph:
@@ -337,6 +355,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/knowledge-graph":
             kg = get_knowledge_graph()
             self._send_json(kg.export_graph_json())
+            return
+
+        # API: Declarative Security Policies
+        if path == "/api/policies":
+            pe = get_policy_engine()
+            self._send_json({"policies": pe.list_policies()})
             return
 
         # API: Single Episode Details
@@ -702,6 +726,31 @@ class DashboardHandler(BaseHTTPRequestHandler):
             name = payload.get("name", "")
             success = pm.reload(name)
             self._send_json({"ok": success, "name": name})
+            return
+
+        # API: Add Security Policy
+        if path == "/api/policies":
+            pe = get_policy_engine()
+            policy = ActionPolicy(
+                id=payload.get("id", f"policy_{len(pe._policies)+1}"),
+                name=payload.get("name", "Custom Policy"),
+                effect=EffectType(payload.get("effect", "ALLOW")),
+                actions=payload.get("actions", ["*"]),
+                resources=payload.get("resources", ["*"]),
+                conditions=payload.get("conditions", {}),
+            )
+            pe.add_policy(policy)
+            self._send_json({"ok": True, "policy": policy.model_dump()})
+            return
+
+        # API: Evaluate Policy Dry-Run
+        if path == "/api/policies/evaluate":
+            pe = get_policy_engine()
+            action = payload.get("action", "")
+            resource = payload.get("resource", "*")
+            args = payload.get("args", {})
+            allowed, reason = pe.evaluate(action=action, resource=resource, args=args)
+            self._send_json({"allowed": allowed, "reason": reason})
             return
 
         self._send_json({"error": "Not Found"}, status=404)
