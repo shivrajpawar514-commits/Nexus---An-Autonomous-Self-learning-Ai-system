@@ -7,6 +7,8 @@ from agent.verifier import Verifier, Verdict
 from agent.reflector import Reflector, ReflectionResult, StructuredLesson
 from agent.orchestrator import Orchestrator, TaskRunReport
 from agent.delegator import SubagentDelegator, DelegationTask, DelegationResult
+from agent.queue import TaskQueue, QueueTask
+from agent.resilience import TokenBucketRateLimiter, with_exponential_backoff
 
 __all__ = [
     "LLMInterface",
@@ -27,5 +29,9 @@ __all__ = [
     "SubagentDelegator",
     "DelegationTask",
     "DelegationResult",
+    "TaskQueue",
+    "QueueTask",
+    "TokenBucketRateLimiter",
+    "with_exponential_backoff",
 ]
 
