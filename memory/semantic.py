@@ -71,6 +71,15 @@ class SimpleVectorIndex:
         self._cached_vocab_len = len(self.vocab)
         return vec
 
+    def compress_vectors(self, precision: str = "float16") -> int:
+        """Compresses internal vector storage using lower precision quantization."""
+        count = 0
+        target_dtype = np.float16 if precision == "float16" else np.float32
+        for k in list(self._vector_cache.keys()):
+            self._vector_cache[k] = self._vector_cache[k].astype(target_dtype)
+            count += 1
+        return count
+
     def compute_similarity(self, query: str, doc_vec: np.ndarray) -> float:
         query_vec = self.get_or_create_vector(query)
         # Pad to match dimensions if vocab grew
