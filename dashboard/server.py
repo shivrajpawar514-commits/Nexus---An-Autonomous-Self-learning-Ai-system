@@ -131,6 +131,52 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 pass
             return
 
+        # API: Prometheus-compatible Metrics Scraper
+        if path == "/metrics":
+            stats = orch.episodic_memory.get_summary_stats()
+            conn = orch.episodic_memory._get_connection()
+            c = conn.cursor()
+            c.execute("SELECT passed, count(*) FROM episodes GROUP BY passed")
+            passed_dist = {bool(row[0]): row[1] for row in c.fetchall()}
+            c.execute("SELECT SUM(total_tokens), SUM(duration_sec) FROM episodes")
+            totals = c.fetchone()
+            total_tokens = totals[0] or 0
+            total_duration = totals[1] or 0.0
+            conn.close()
+
+            passed_count = passed_dist.get(True, 0)
+            failed_count = passed_dist.get(False, 0)
+            total_episodes = passed_count + failed_count
+
+            prom_text = (
+                "# HELP nexus_tasks_total Total tasks processed\n"
+                "# TYPE nexus_tasks_total counter\n"
+                f"nexus_tasks_total {total_episodes}\n\n"
+                "# HELP nexus_tasks_passed_total Total successfully verified tasks\n"
+                "# TYPE nexus_tasks_passed_total counter\n"
+                f"nexus_tasks_passed_total {passed_count}\n\n"
+                "# HELP nexus_tasks_failed_total Total failed tasks\n"
+                "# TYPE nexus_tasks_failed_total counter\n"
+                f"nexus_tasks_failed_total {failed_count}\n\n"
+                "# HELP nexus_token_usage_total Total LLM tokens consumed\n"
+                "# TYPE nexus_token_usage_total counter\n"
+                f"nexus_token_usage_total {total_tokens}\n\n"
+                "# HELP nexus_execution_duration_seconds Total execution time in seconds\n"
+                "# TYPE nexus_execution_duration_seconds counter\n"
+                f"nexus_execution_duration_seconds {round(total_duration, 3)}\n\n"
+                "# HELP nexus_skills_verified_total Total verified Voyager skills\n"
+                "# TYPE nexus_skills_verified_total gauge\n"
+                f"nexus_skills_verified_total {len(orch.skill_library.skills)}\n"
+            )
+            body = prom_text.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         # API: Telemetry Stats
         if path == "/api/stats":
             stats = orch.episodic_memory.get_summary_stats()
