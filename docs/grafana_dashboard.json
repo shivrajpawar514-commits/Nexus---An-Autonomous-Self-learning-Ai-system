@@ -1,0 +1,51 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Task Throughput & Verification Success",
+      "type": "stat",
+      "targets": [
+        { "expr": "rate(nexus_tasks_total[5m])", "legendFormat": "Tasks / sec" },
+        { "expr": "nexus_tasks_passed_total / nexus_tasks_total * 100", "legendFormat": "Success Rate %" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "title": "Token Consumption Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(nexus_token_usage_total[5m])", "legendFormat": "Tokens / sec" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "title": "Verified Voyager Skills in Registry",
+      "type": "gauge",
+      "targets": [
+        { "expr": "nexus_skills_verified_total", "legendFormat": "Active Skills" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "title": "Execution Latency Duration (sec)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(nexus_execution_duration_seconds[5m])", "legendFormat": "Seconds / sec" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["nexus", "agent", "llm"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Nexus AI Agent System - Mission Control",
+  "version": 1
+}
