@@ -23,6 +23,8 @@ from memory.semantic import SemanticMemory
 from memory.skills import SkillLibrary
 from memory.knowledge_graph import KnowledgeGraph
 from safety.policy_engine import PolicyEngine, ActionPolicy, EffectType
+from telemetry.context import get_global_tracer
+from telemetry.exporter import TraceExporter
 from tools.base import get_default_registry
 from tools.python_sandbox import run_python
 from tools.calculator import calculate
@@ -361,6 +363,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/policies":
             pe = get_policy_engine()
             self._send_json({"policies": pe.list_policies()})
+            return
+
+        # API: Distributed Traces List
+        if path == "/api/traces":
+            exporter = TraceExporter(get_global_tracer())
+            self._send_json({"traces": exporter.list_traces()})
+            return
+
+        # API: Trace Waterfall Tree
+        if path.startswith("/api/traces/"):
+            trace_id = path.split("/")[-1]
+            exporter = TraceExporter(get_global_tracer())
+            self._send_json(exporter.get_waterfall(trace_id))
             return
 
         # API: Single Episode Details
