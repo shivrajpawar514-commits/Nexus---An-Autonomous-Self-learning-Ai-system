@@ -9,6 +9,7 @@ from agent.orchestrator import Orchestrator, TaskRunReport
 from agent.delegator import SubagentDelegator, DelegationTask, DelegationResult
 from agent.queue import TaskQueue, QueueTask
 from agent.resilience import TokenBucketRateLimiter, with_exponential_backoff
+from agent.summarizer import ContextSummarizer, SummaryResult
 
 __all__ = [
     "LLMInterface",
@@ -33,5 +34,7 @@ __all__ = [
     "QueueTask",
     "TokenBucketRateLimiter",
     "with_exponential_backoff",
+    "ContextSummarizer",
+    "SummaryResult",
 ]
 
