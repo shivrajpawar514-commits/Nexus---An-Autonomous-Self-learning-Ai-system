@@ -242,6 +242,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json({"episodes": episodes})
             return
 
+        # API: Memory Clusters for 2D Visualization
+        if path == "/api/clusters":
+            items = list(orch.semantic_memory.items.values())
+            nodes = []
+            for idx, item in enumerate(items):
+                # Deterministic pseudo-coordinates from item hash for 2D embedding space
+                h = hash(item.rule)
+                x = ((h % 1000) / 1000.0) * 100
+                y = (((h // 1000) % 1000) / 1000.0) * 100
+                nodes.append({
+                    "id": item.id,
+                    "x": round(x, 2),
+                    "y": round(y, 2),
+                    "label": item.rule[:35] + "...",
+                    "importance": item.importance,
+                    "usefulness": round(item.usefulness, 3),
+                })
+            self._send_json({"clusters": nodes, "count": len(nodes)})
+            return
+
         # API: Single Episode Details
         if path.startswith("/api/episodes/"):
             try:
