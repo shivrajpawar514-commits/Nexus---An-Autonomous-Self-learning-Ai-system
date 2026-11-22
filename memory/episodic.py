@@ -125,3 +125,26 @@ class EpisodicMemory:
             "avg_tokens": round(row[3] or 0.0, 1),
             "avg_duration_sec": round(row[4] or 0.0, 2),
         }
+
+    def prune_old_episodes(self, max_age_seconds: float = 86400 * 30, keep_minimum: int = 5) -> int:
+        """Prunes historical episodes older than max_age while retaining at least keep_minimum."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT count(*) FROM episodes")
+        total = cursor.fetchone()[0] or 0
+
+        if total <= keep_minimum:
+            conn.close()
+            return 0
+
+        cutoff = time.time() - max_age_seconds
+        # Find ID cutoff to preserve keep_minimum newest
+        cursor.execute("SELECT id FROM episodes ORDER BY id DESC LIMIT 1 OFFSET ?", (keep_minimum - 1,))
+        preserve_row = cursor.fetchone()
+        preserve_id = preserve_row[0] if preserve_row else 0
+
+        cursor.execute("DELETE FROM episodes WHERE created_at < ? AND id < ?", (cutoff, preserve_id))
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return deleted

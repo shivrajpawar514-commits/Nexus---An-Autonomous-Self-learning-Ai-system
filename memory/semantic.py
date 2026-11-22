@@ -178,3 +178,24 @@ class SemanticMemory:
         """Records outcome for a single memory item."""
         self.update_usefulness([memory_id], passed=success)
 
+    def compact_memory(self, min_importance: float = 0.20, max_items: int = 500) -> int:
+        """Prunes low-importance or low-usefulness memories to maintain retrieval efficiency."""
+        to_prune = []
+        for mid, item in self.items.items():
+            if item.importance < min_importance and item.usefulness < 0.4:
+                to_prune.append(mid)
+
+        # If still over max_items, prune lowest usefulness items
+        if len(self.items) - len(to_prune) > max_items:
+            excess = (len(self.items) - len(to_prune)) - max_items
+            remaining = [i for i in self.items.values() if i.id not in to_prune]
+            remaining.sort(key=lambda x: (x.usefulness, x.importance))
+            to_prune.extend([r.id for r in remaining[:excess]])
+
+        for mid in to_prune:
+            del self.items[mid]
+            if mid in self.doc_vectors:
+                del self.doc_vectors[mid]
+
+        return len(to_prune)
+
