@@ -90,6 +90,12 @@ class ToolRegistry:
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
 
+    def unregister(self, name: str) -> bool:
+        if name in self._tools:
+            del self._tools[name]
+            return True
+        return False
+
     def get(self, name: str) -> Optional[Tool]:
         return self._tools.get(name)
 

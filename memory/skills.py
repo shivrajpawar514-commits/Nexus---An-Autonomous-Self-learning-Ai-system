@@ -16,9 +16,12 @@ class SkillEntry(BaseModel):
     code: str
     input_schema: Dict[str, Any] = Field(default_factory=dict)
     test_code: str = ""
+    version: str = "1.0.0"
     success_count: int = 0
     failure_count: int = 0
     is_verified: bool = False
+    is_deprecated: bool = False
+    deprecation_reason: Optional[str] = None
 
 
 class SkillLibrary:
@@ -48,6 +51,59 @@ class SkillLibrary:
         full_text = f"{name}: {description}"
         self.doc_vectors[name] = self.index.get_or_create_vector(full_text)
         return entry
+
+    def deprecate_skill(self, name: str, reason: str = "") -> bool:
+        """Marks a skill as deprecated and removes it from the live tool registry."""
+        skill = self.skills.get(name)
+        if not skill:
+            return False
+        skill.is_deprecated = True
+        skill.deprecation_reason = reason or "Superseded or marked obsolete"
+        if hasattr(self.tool_registry, "unregister"):
+            self.tool_registry.unregister(name)
+        elif hasattr(self.tool_registry, "_tools") and name in self.tool_registry._tools:
+            del self.tool_registry._tools[name]
+        return True
+
+    def upgrade_skill(self, name: str, new_code: str, new_test_code: str = "") -> Optional[SkillEntry]:
+        """Upgrades a skill to a new semantic version if unit tests pass."""
+        skill = self.skills.get(name)
+        if not skill:
+            return None
+
+        # Parse semver patch increment
+        parts = skill.version.split(".")
+        new_patch = int(parts[-1]) + 1
+        new_version = f"{parts[0]}.{parts[1]}.{new_patch}"
+
+        # Test new version
+        exec_scope: Dict[str, Any] = {}
+        try:
+            exec(new_code, exec_scope)
+            fn = exec_scope.get(name)
+            if not callable(fn):
+                return None
+            if new_test_code:
+                exec(new_test_code, exec_scope)
+            
+            skill.code = new_code
+            skill.test_code = new_test_code
+            skill.version = new_version
+            skill.is_verified = True
+
+            # Update live tool
+            self.tool_registry.register(
+                Tool(
+                    name=name,
+                    description=skill.description,
+                    func=fn,
+                    permission=PermissionTier.READ_ONLY,
+                    parameters_schema=skill.input_schema or None,
+                )
+            )
+            return skill
+        except Exception:
+            return None
 
     def verify_skill(self, name: str) -> Optional[Callable]:
         """Executes the skill's unit tests in Python and marks verified if passed."""
