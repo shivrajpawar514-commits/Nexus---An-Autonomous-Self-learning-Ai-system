@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional
 
 from agent.llm import MockLLM
 from agent.orchestrator import Orchestrator
+from agent.blackboard import Blackboard, BlackboardMessage, MessageType
+from agent.consensus import ConsensusEngine, ConsensusVote, VoteType
 from eval.run import evaluate_split, run_learning_cycle
 from memory.episodic import EpisodicMemory
 from memory.semantic import SemanticMemory
@@ -28,6 +30,8 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 # Global shared orchestrator instance
 global_orchestrator: Optional[Orchestrator] = None
+global_blackboard: Optional[Blackboard] = None
+global_consensus: Optional[ConsensusEngine] = None
 
 
 def get_orchestrator() -> Orchestrator:
@@ -36,6 +40,20 @@ def get_orchestrator() -> Orchestrator:
         llm = MockLLM()
         global_orchestrator = Orchestrator(llm=llm)
     return global_orchestrator
+
+
+def get_blackboard() -> Blackboard:
+    global global_blackboard
+    if global_blackboard is None:
+        global_blackboard = Blackboard()
+    return global_blackboard
+
+
+def get_consensus() -> ConsensusEngine:
+    global global_consensus
+    if global_consensus is None:
+        global_consensus = ConsensusEngine()
+    return global_consensus
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -260,6 +278,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     "usefulness": round(item.usefulness, 3),
                 })
             self._send_json({"clusters": nodes, "count": len(nodes)})
+            return
+
+        # API: Blackboard Swarm Messages
+        if path == "/api/blackboard/messages":
+            bb = get_blackboard()
+            topic_filter = query.get("topic", [None])[0]
+            limit_val = int(query.get("limit", [50])[0])
+            msgs = bb.get_messages(topic=topic_filter, limit=limit_val)
+            self._send_json({"messages": [m.model_dump() for m in msgs], "count": len(msgs)})
+            return
+
+        # API: Consensus Status
+        if path == "/api/consensus/status":
+            engine = get_consensus()
+            bb = get_blackboard()
+            self._send_json({
+                "engine": "ConsensusEngine",
+                "default_threshold": engine.default_threshold,
+                "total_blackboard_messages": bb.count(),
+            })
             return
 
         # API: Single Episode Details
@@ -568,6 +606,43 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "output": str(res.output) if res.output is not None else "",
                 "error": res.error or "",
             })
+            return
+
+        # API: Post Message to Blackboard
+        if path == "/api/blackboard/post":
+            bb = get_blackboard()
+            sender = payload.get("sender", "agent")
+            topic = payload.get("topic", "general")
+            msg_type = payload.get("msg_type", "PROPOSAL")
+            data = payload.get("payload", {})
+            msg = bb.post(sender=sender, topic=topic, msg_type=msg_type, payload=data)
+            self._send_json({"ok": True, "message": msg.model_dump()})
+            return
+
+        # API: Evaluate Multi-Agent Consensus
+        if path == "/api/consensus/vote":
+            engine = get_consensus()
+            raw_votes = payload.get("votes", [])
+            weights = payload.get("weights", {})
+            require_supermajority = payload.get("require_supermajority", False)
+            threshold = payload.get("threshold", None)
+
+            votes = [
+                ConsensusVote(
+                    agent_id=v.get("agent_id", f"agent_{i}"),
+                    vote=VoteType(v.get("vote", "APPROVE")),
+                    confidence=float(v.get("confidence", 1.0)),
+                    reasoning=v.get("reasoning", ""),
+                )
+                for i, v in enumerate(raw_votes)
+            ]
+            result = engine.evaluate(
+                votes=votes,
+                agent_weights=weights,
+                threshold=threshold,
+                require_supermajority=require_supermajority,
+            )
+            self._send_json({"ok": True, "result": result.model_dump()})
             return
 
         self._send_json({"error": "Not Found"}, status=404)
