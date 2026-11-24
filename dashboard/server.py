@@ -14,6 +14,9 @@ from agent.llm import MockLLM
 from agent.orchestrator import Orchestrator
 from agent.blackboard import Blackboard, BlackboardMessage, MessageType
 from agent.consensus import ConsensusEngine, ConsensusVote, VoteType
+from plugins.manager import PluginManager
+from plugins.builtin.audit_logger import AuditLoggerPlugin
+from plugins.builtin.cost_tracker import CostTrackerPlugin
 from eval.run import evaluate_split, run_learning_cycle
 from memory.episodic import EpisodicMemory
 from memory.semantic import SemanticMemory
@@ -28,17 +31,28 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
 
 
-# Global shared orchestrator instance
+# Global shared instances
 global_orchestrator: Optional[Orchestrator] = None
 global_blackboard: Optional[Blackboard] = None
 global_consensus: Optional[ConsensusEngine] = None
+global_plugin_manager: Optional[PluginManager] = None
+
+
+def get_plugin_manager() -> PluginManager:
+    global global_plugin_manager
+    if global_plugin_manager is None:
+        global_plugin_manager = PluginManager(tool_registry=get_default_registry())
+        global_plugin_manager.register(AuditLoggerPlugin())
+        global_plugin_manager.register(CostTrackerPlugin())
+    return global_plugin_manager
 
 
 def get_orchestrator() -> Orchestrator:
     global global_orchestrator
     if global_orchestrator is None:
         llm = MockLLM()
-        global_orchestrator = Orchestrator(llm=llm)
+        pm = get_plugin_manager()
+        global_orchestrator = Orchestrator(llm=llm, plugin_manager=pm)
     return global_orchestrator
 
 
@@ -298,6 +312,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "default_threshold": engine.default_threshold,
                 "total_blackboard_messages": bb.count(),
             })
+            return
+
+        # API: Installed Plugins List
+        if path == "/api/plugins":
+            pm = get_plugin_manager()
+            self._send_json({"plugins": pm.list_plugins()})
             return
 
         # API: Single Episode Details
@@ -643,6 +663,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 require_supermajority=require_supermajority,
             )
             self._send_json({"ok": True, "result": result.model_dump()})
+            return
+
+        # API: Toggle Plugin Enabled State
+        if path == "/api/plugins/toggle":
+            pm = get_plugin_manager()
+            name = payload.get("name", "")
+            enable_flag = bool(payload.get("enabled", True))
+            if enable_flag:
+                success = pm.enable(name)
+            else:
+                success = pm.disable(name)
+            self._send_json({"ok": success, "name": name, "enabled": enable_flag})
+            return
+
+        # API: Hot Reload Plugin
+        if path == "/api/plugins/reload":
+            pm = get_plugin_manager()
+            name = payload.get("name", "")
+            success = pm.reload(name)
+            self._send_json({"ok": success, "name": name})
             return
 
         self._send_json({"error": "Not Found"}, status=404)
