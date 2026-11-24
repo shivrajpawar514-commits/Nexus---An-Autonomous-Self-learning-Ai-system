@@ -40,12 +40,14 @@ class Executor:
         max_steps: int = 10,
         token_budget: int = 50000,
         timeout_seconds: float = 60.0,
+        plugin_manager: Optional[Any] = None,
     ):
         self.llm = llm
         self.tool_registry = tool_registry or get_default_registry()
         self.max_steps = max_steps
         self.token_budget = token_budget
         self.timeout_seconds = timeout_seconds
+        self.plugin_manager = plugin_manager
 
     def _parse_action_call(self, text: str) -> tuple[str, Optional[str], Dict[str, Any]]:
         """Parses Thought and Action: tool_name(arg1=val1, ...) or finish(answer=...)."""
@@ -224,11 +226,31 @@ class Executor:
                     duration_sec=time.time() - start_time,
                 )
 
+            # Plugin pre-execute hook
+            if self.plugin_manager:
+                allowed, block_reason = self.plugin_manager.trigger_pre_execute(action_name, action_args)
+                if not allowed:
+                    step.observation = f"Tool call blocked: {block_reason}"
+                    step.duration_sec = time.time() - step_start
+                    trajectory.append(step)
+                    history_dialogue += (
+                        f"\nStep {step_idx}:\n"
+                        f"Thought: {thought}\n"
+                        f"Action: {action_name}({action_args})\n"
+                        f"Observation: {step.observation}\n"
+                    )
+                    continue
+
             # Execute tool
             tool_res: ToolResult = self.tool_registry.execute(action_name, **action_args)
             obs_str = tool_res.to_observation_str()
             step.observation = obs_str
             step.duration_sec = time.time() - step_start
+
+            # Plugin post-execute hook
+            if self.plugin_manager:
+                self.plugin_manager.trigger_post_execute(action_name, action_args, obs_str, step.duration_sec)
+
             trajectory.append(step)
 
             # Append to history dialogue

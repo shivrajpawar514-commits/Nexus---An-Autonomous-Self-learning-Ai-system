@@ -34,15 +34,17 @@ class Orchestrator:
         episodic_memory: Optional[EpisodicMemory] = None,
         semantic_memory: Optional[SemanticMemory] = None,
         skill_library: Optional[SkillLibrary] = None,
+        plugin_manager: Optional[Any] = None,
     ):
         self.llm = llm
         self.tool_registry = tool_registry or get_default_registry()
         self.episodic_memory = episodic_memory or EpisodicMemory()
         self.semantic_memory = semantic_memory or SemanticMemory()
         self.skill_library = skill_library or SkillLibrary(tool_registry=self.tool_registry)
+        self.plugin_manager = plugin_manager
 
         self.planner = Planner(llm=self.llm)
-        self.executor = Executor(llm=self.llm, tool_registry=self.tool_registry)
+        self.executor = Executor(llm=self.llm, tool_registry=self.tool_registry, plugin_manager=self.plugin_manager)
         self.verifier = Verifier(llm=self.llm)
         self.reflector = Reflector(llm=self.llm)
 
