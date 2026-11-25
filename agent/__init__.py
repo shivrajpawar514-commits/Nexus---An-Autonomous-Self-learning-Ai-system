@@ -13,6 +13,7 @@ from agent.summarizer import ContextSummarizer, SummaryResult
 from agent.blackboard import Blackboard, BlackboardMessage, MessageType
 from agent.consensus import ConsensusEngine, ConsensusVote, ConsensusResult, VoteType
 from agent.debate import DebateCoordinator, DebateRound, DebateResult
+from agent.deadlock_detector import DeadlockDetector, DeadlockIntervention, DeadlockType
 
 __all__ = [
     "LLMInterface",
@@ -49,4 +50,7 @@ __all__ = [
     "DebateCoordinator",
     "DebateRound",
     "DebateResult",
+    "DeadlockDetector",
+    "DeadlockIntervention",
+    "DeadlockType",
 ]
