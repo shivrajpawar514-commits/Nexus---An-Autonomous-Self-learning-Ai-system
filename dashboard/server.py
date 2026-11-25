@@ -23,6 +23,7 @@ from memory.semantic import SemanticMemory
 from memory.skills import SkillLibrary
 from memory.knowledge_graph import KnowledgeGraph
 from safety.policy_engine import PolicyEngine, ActionPolicy, EffectType
+from sandbox.watchdog import SandboxWatchdog
 from telemetry.context import get_global_tracer
 from telemetry.exporter import TraceExporter
 from tools.base import get_default_registry
@@ -42,6 +43,14 @@ global_consensus: Optional[ConsensusEngine] = None
 global_plugin_manager: Optional[PluginManager] = None
 global_knowledge_graph: Optional[KnowledgeGraph] = None
 global_policy_engine: Optional[PolicyEngine] = None
+global_watchdog: Optional[SandboxWatchdog] = None
+
+
+def get_watchdog() -> SandboxWatchdog:
+    global global_watchdog
+    if global_watchdog is None:
+        global_watchdog = SandboxWatchdog(failure_threshold=3, recovery_timeout_sec=30.0)
+    return global_watchdog
 
 
 def get_policy_engine() -> PolicyEngine:
@@ -85,7 +94,8 @@ def get_orchestrator() -> Orchestrator:
     if global_orchestrator is None:
         llm = MockLLM()
         pm = get_plugin_manager()
-        global_orchestrator = Orchestrator(llm=llm, plugin_manager=pm)
+        wd = get_watchdog()
+        global_orchestrator = Orchestrator(llm=llm, plugin_manager=pm, watchdog=wd)
     return global_orchestrator
 
 
@@ -376,6 +386,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             trace_id = path.split("/")[-1]
             exporter = TraceExporter(get_global_tracer())
             self._send_json(exporter.get_waterfall(trace_id))
+            return
+
+        # API: Sandbox Watchdog Circuit Breakers
+        if path == "/api/watchdog/status":
+            self._send_json(get_watchdog().get_status())
             return
 
         # API: Single Episode Details
@@ -766,6 +781,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             args = payload.get("args", {})
             allowed, reason = pe.evaluate(action=action, resource=resource, args=args)
             self._send_json({"allowed": allowed, "reason": reason})
+            return
+
+        # API: Reset Sandbox Watchdog Circuit Breakers
+        if path == "/api/watchdog/reset":
+            get_watchdog().reset_all()
+            self._send_json({"ok": True, "message": "Circuit breakers reset"})
             return
 
         self._send_json({"error": "Not Found"}, status=404)
