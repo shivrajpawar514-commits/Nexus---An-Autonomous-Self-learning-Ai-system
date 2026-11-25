@@ -35,6 +35,7 @@ class Orchestrator:
         semantic_memory: Optional[SemanticMemory] = None,
         skill_library: Optional[SkillLibrary] = None,
         plugin_manager: Optional[Any] = None,
+        watchdog: Optional[Any] = None,
     ):
         self.llm = llm
         self.tool_registry = tool_registry or get_default_registry()
@@ -42,9 +43,15 @@ class Orchestrator:
         self.semantic_memory = semantic_memory or SemanticMemory()
         self.skill_library = skill_library or SkillLibrary(tool_registry=self.tool_registry)
         self.plugin_manager = plugin_manager
+        self.watchdog = watchdog
 
         self.planner = Planner(llm=self.llm)
-        self.executor = Executor(llm=self.llm, tool_registry=self.tool_registry, plugin_manager=self.plugin_manager)
+        self.executor = Executor(
+            llm=self.llm,
+            tool_registry=self.tool_registry,
+            plugin_manager=self.plugin_manager,
+            watchdog=self.watchdog,
+        )
         self.verifier = Verifier(llm=self.llm)
         self.reflector = Reflector(llm=self.llm)
 

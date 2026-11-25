@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from agent.llm import LLMInterface
+from agent.deadlock_detector import DeadlockDetector
 from tools.base import ToolRegistry, ToolResult, get_default_registry
 
 
@@ -41,6 +42,8 @@ class Executor:
         token_budget: int = 50000,
         timeout_seconds: float = 60.0,
         plugin_manager: Optional[Any] = None,
+        watchdog: Optional[Any] = None,
+        deadlock_detector: Optional[DeadlockDetector] = None,
     ):
         self.llm = llm
         self.tool_registry = tool_registry or get_default_registry()
@@ -48,6 +51,8 @@ class Executor:
         self.token_budget = token_budget
         self.timeout_seconds = timeout_seconds
         self.plugin_manager = plugin_manager
+        self.watchdog = watchdog
+        self.deadlock_detector = deadlock_detector or DeadlockDetector()
 
     def _parse_action_call(self, text: str) -> tuple[str, Optional[str], Dict[str, Any]]:
         """Parses Thought and Action: tool_name(arg1=val1, ...) or finish(answer=...)."""
@@ -211,6 +216,11 @@ class Executor:
                 tokens_used=response.total_tokens,
             )
 
+            # Deadlock and loop detection
+            intervention = self.deadlock_detector.analyze(trajectory)
+            if intervention.detected:
+                history_dialogue += f"\n[Deadlock Watchdog Intervention]: {intervention.intervention_prompt}\n"
+
             # Check if finished
             if action_name == "finish" or not action_name:
                 ans = action_args.get("answer", thought)
@@ -225,6 +235,21 @@ class Executor:
                     total_tokens=accumulated_tokens,
                     duration_sec=time.time() - start_time,
                 )
+
+            # Watchdog circuit breaker check
+            if self.watchdog and action_name:
+                allowed, trip_reason = self.watchdog.check_tool_health(action_name)
+                if not allowed:
+                    step.observation = f"Watchdog Circuit Breaker Active: {trip_reason}"
+                    step.duration_sec = time.time() - step_start
+                    trajectory.append(step)
+                    history_dialogue += (
+                        f"\nStep {step_idx}:\n"
+                        f"Thought: {thought}\n"
+                        f"Action: {action_name}({action_args})\n"
+                        f"Observation: {step.observation}\n"
+                    )
+                    continue
 
             # Plugin pre-execute hook
             if self.plugin_manager:
@@ -246,6 +271,10 @@ class Executor:
             obs_str = tool_res.to_observation_str()
             step.observation = obs_str
             step.duration_sec = time.time() - step_start
+
+            # Record result in watchdog circuit breaker
+            if self.watchdog and action_name:
+                self.watchdog.record_tool_result(action_name, success=tool_res.ok)
 
             # Plugin post-execute hook
             if self.plugin_manager:
