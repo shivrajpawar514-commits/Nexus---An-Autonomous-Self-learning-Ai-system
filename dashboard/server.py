@@ -24,6 +24,7 @@ from memory.skills import SkillLibrary
 from memory.knowledge_graph import KnowledgeGraph
 from safety.policy_engine import PolicyEngine, ActionPolicy, EffectType
 from sandbox.watchdog import SandboxWatchdog
+from routing import ModelRouter, ComplexityClassifier
 from telemetry.context import get_global_tracer
 from telemetry.exporter import TraceExporter
 from tools.base import get_default_registry
@@ -44,6 +45,14 @@ global_plugin_manager: Optional[PluginManager] = None
 global_knowledge_graph: Optional[KnowledgeGraph] = None
 global_policy_engine: Optional[PolicyEngine] = None
 global_watchdog: Optional[SandboxWatchdog] = None
+global_model_router: Optional[ModelRouter] = None
+
+
+def get_model_router() -> ModelRouter:
+    global global_model_router
+    if global_model_router is None:
+        global_model_router = ModelRouter()
+    return global_model_router
 
 
 def get_watchdog() -> SandboxWatchdog:
@@ -391,6 +400,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # API: Sandbox Watchdog Circuit Breakers
         if path == "/api/watchdog/status":
             self._send_json(get_watchdog().get_status())
+            return
+
+        # API: Model Tiers and Routing Configuration
+        if path == "/api/routing/models":
+            self._send_json({"tiers": get_model_router().get_tier_info()})
             return
 
         # API: Single Episode Details
@@ -787,6 +801,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/api/watchdog/reset":
             get_watchdog().reset_all()
             self._send_json({"ok": True, "message": "Circuit breakers reset"})
+            return
+
+        # API: Simulate Semantic Model Routing
+        if path == "/api/routing/simulate":
+            goal = payload.get("goal", "").strip()
+            budget = payload.get("budget", None)
+            classifier = ComplexityClassifier()
+            assessment = classifier.assess(goal)
+            tier_cfg = get_model_router().route(goal, max_budget_usd=budget)
+            self._send_json({
+                "goal": goal,
+                "complexity": assessment.model_dump(),
+                "selected_tier": tier_cfg.model_dump(),
+            })
             return
 
         self._send_json({"error": "Not Found"}, status=404)
