@@ -25,6 +25,7 @@ from memory.knowledge_graph import KnowledgeGraph
 from safety.policy_engine import PolicyEngine, ActionPolicy, EffectType
 from sandbox.watchdog import SandboxWatchdog
 from routing import ModelRouter, ComplexityClassifier
+from evolution import StrategyManager, EvolutionaryTournament
 from telemetry.context import get_global_tracer
 from telemetry.exporter import TraceExporter
 from tools.base import get_default_registry
@@ -46,6 +47,14 @@ global_knowledge_graph: Optional[KnowledgeGraph] = None
 global_policy_engine: Optional[PolicyEngine] = None
 global_watchdog: Optional[SandboxWatchdog] = None
 global_model_router: Optional[ModelRouter] = None
+global_strategy_manager: Optional[StrategyManager] = None
+
+
+def get_strategy_manager() -> StrategyManager:
+    global global_strategy_manager
+    if global_strategy_manager is None:
+        global_strategy_manager = StrategyManager()
+    return global_strategy_manager
 
 
 def get_model_router() -> ModelRouter:
@@ -405,6 +414,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # API: Model Tiers and Routing Configuration
         if path == "/api/routing/models":
             self._send_json({"tiers": get_model_router().get_tier_info()})
+            return
+
+        # API: Strategy Evolution Status
+        if path == "/api/evolution/status":
+            self._send_json(get_strategy_manager().get_status())
             return
 
         # API: Single Episode Details
@@ -814,6 +828,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "goal": goal,
                 "complexity": assessment.model_dump(),
                 "selected_tier": tier_cfg.model_dump(),
+            })
+            return
+
+        # API: Trigger Prompt Mutation and Strategy Evolution
+        if path == "/api/evolution/mutate":
+            sm = get_strategy_manager()
+            mutated = sm.mutator.mutate(sm.active_chromosome)
+            tournament = EvolutionaryTournament()
+            metrics = tournament.calculate_fitness(accuracy=1.0, avg_tokens=1100, avg_steps=2.2)
+            sm.promote_variant(mutated, metrics=metrics)
+            self._send_json({
+                "promoted": True,
+                "chromosome": mutated.model_dump(),
+                "metrics": metrics.model_dump(),
             })
             return
 
