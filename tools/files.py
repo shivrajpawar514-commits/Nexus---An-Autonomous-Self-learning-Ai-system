@@ -2,10 +2,24 @@
 
 import os
 from pathlib import Path
+from typing import Any, Dict, Optional
 from tools.base import tool, ToolResult, PermissionTier
+from sandbox.vfs import OverlayFS
 
 WORKSPACE_ROOT = (Path(__file__).resolve().parent.parent / "sandbox_workspace").resolve()
 WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
+
+# Active virtual filesystem overlay (optional)
+_active_overlay: Optional[OverlayFS] = None
+
+
+def get_active_overlay() -> Optional[OverlayFS]:
+    return _active_overlay
+
+
+def set_active_overlay(overlay: Optional[OverlayFS]) -> None:
+    global _active_overlay
+    _active_overlay = overlay
 
 
 def _resolve_safe_path(rel_path: str) -> Path:
@@ -19,6 +33,10 @@ def _resolve_safe_path(rel_path: str) -> Path:
 def read_file(path: str) -> ToolResult:
     """Reads a text file inside the workspace."""
     try:
+        if _active_overlay:
+            content = _active_overlay.read_text(path)
+            return ToolResult(ok=True, output=content)
+
         target = _resolve_safe_path(path)
         if not target.exists():
             return ToolResult(ok=False, error=f"File not found: {path}")
@@ -34,6 +52,10 @@ def read_file(path: str) -> ToolResult:
 def write_file(path: str, content: str) -> ToolResult:
     """Writes content to a file inside the workspace."""
     try:
+        if _active_overlay:
+            _active_overlay.write_text(path, content)
+            return ToolResult(ok=True, output=f"Successfully staged {len(content)} characters to overlay {path}")
+
         target = _resolve_safe_path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
@@ -46,6 +68,10 @@ def write_file(path: str, content: str) -> ToolResult:
 def list_files(directory: str = "") -> ToolResult:
     """Lists entries in a directory relative to workspace root."""
     try:
+        if _active_overlay:
+            entries = _active_overlay.list_dir(directory)
+            return ToolResult(ok=True, output=entries)
+
         target = _resolve_safe_path(directory)
         if not target.exists():
             return ToolResult(ok=False, error=f"Directory not found: {directory}")
