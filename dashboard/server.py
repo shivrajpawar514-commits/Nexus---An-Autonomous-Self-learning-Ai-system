@@ -24,6 +24,7 @@ from memory.skills import SkillLibrary
 from memory.knowledge_graph import KnowledgeGraph
 from safety.policy_engine import PolicyEngine, ActionPolicy, EffectType
 from sandbox.watchdog import SandboxWatchdog
+from sandbox.tenant import TenantWorkspaceManager, TenantConfig
 from routing import ModelRouter, ComplexityClassifier
 from evolution import StrategyManager, EvolutionaryTournament
 from telemetry.context import get_global_tracer
@@ -48,6 +49,16 @@ global_policy_engine: Optional[PolicyEngine] = None
 global_watchdog: Optional[SandboxWatchdog] = None
 global_model_router: Optional[ModelRouter] = None
 global_strategy_manager: Optional[StrategyManager] = None
+global_workspace_manager: Optional[TenantWorkspaceManager] = None
+
+
+def get_workspace_manager() -> TenantWorkspaceManager:
+    global global_workspace_manager
+    if global_workspace_manager is None:
+        root = Path(__file__).resolve().parent.parent / "sandbox_workspace"
+        global_workspace_manager = TenantWorkspaceManager(root_dir=root)
+        global_workspace_manager.register_tenant(TenantConfig(tenant_id="default"))
+    return global_workspace_manager
 
 
 def get_strategy_manager() -> StrategyManager:
@@ -419,6 +430,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # API: Strategy Evolution Status
         if path == "/api/evolution/status":
             self._send_json(get_strategy_manager().get_status())
+            return
+
+        # API: Virtual Filesystem Overlays Status
+        if path == "/api/vfs/status":
+            self._send_json({"tenants": get_workspace_manager().list_tenants()})
             return
 
         # API: Single Episode Details
@@ -843,6 +859,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "chromosome": mutated.model_dump(),
                 "metrics": metrics.model_dump(),
             })
+            return
+
+        # API: Commit or Rollback Virtual Filesystem Overlay
+        if path == "/api/vfs/commit":
+            tenant_id = payload.get("tenant_id", "default")
+            action = payload.get("action", "commit")
+            wm = get_workspace_manager()
+            overlay = wm.get_overlay(tenant_id)
+            if action == "rollback":
+                affected = overlay.rollback()
+            else:
+                affected = overlay.commit()
+            self._send_json({"ok": True, "tenant_id": tenant_id, "action": action, "files_affected": affected})
             return
 
         self._send_json({"error": "Not Found"}, status=404)
