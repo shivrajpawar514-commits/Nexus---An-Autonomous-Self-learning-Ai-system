@@ -273,6 +273,12 @@
       <button onclick="switchTab('router')" id="tab-btn-router" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
         <i class="fa-solid fa-route text-indigo-400"></i> Model Router
       </button>
+      <button onclick="switchTab('security')" id="tab-btn-security" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
+        <i class="fa-solid fa-shield-halved text-cyan-400"></i> VFS & Security
+      </button>
+      <button onclick="switchTab('diagnostics')" id="tab-btn-diagnostics" class="tab-btn px-4 py-2.5 rounded-t-lg border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5 flex items-center gap-2 transition">
+        <i class="fa-solid fa-heart-pulse text-emerald-400"></i> Diagnostics Probes
+      </button>
     </div>
 
     <!-- TAB 1: LIVE CONSOLE -->
@@ -707,6 +713,113 @@ print(f"Calculated Mean: {mean_val}")</textarea>
       </div>
     </div>
 
+    <!-- TAB 9: VFS & SECURITY WATCHDOG -->
+    <div id="tab-content-security" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- VFS Explorer -->
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <span class="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+              <i class="fa-solid fa-folder-tree"></i> Virtual Filesystem (CoW)
+            </span>
+            <button onclick="commitVFSLayer()" class="px-3 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 text-[11px] font-mono transition">
+              <i class="fa-solid fa-code-commit"></i> Commit CoW Layer
+            </button>
+          </div>
+          <div class="space-y-3 font-mono text-xs">
+            <div id="vfs-status-summary" class="bg-black/40 border border-white/10 rounded-xl p-3 text-[11px] space-y-1.5">
+              <div class="flex justify-between text-slate-400"><span>Tenant:</span><span id="vfs-tenant-name" class="text-white font-bold">tenant-default</span></div>
+              <div class="flex justify-between text-slate-400"><span>Dirty Uncommitted Files:</span><span id="vfs-dirty-count" class="text-amber-400 font-bold">0</span></div>
+              <div class="flex justify-between text-slate-400"><span>Isolation Status:</span><span class="text-emerald-400 font-bold">SECURE_SANDBOX</span></div>
+            </div>
+            <div class="font-bold text-slate-300 text-xs mt-3">Active Workspace Mounts</div>
+            <div id="vfs-mounts-list" class="space-y-1.5 max-h-48 overflow-y-auto">
+              <div class="text-slate-500 py-2 text-center">Loading tenants...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sandbox Watchdog & Circuit Breakers -->
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <span class="text-xs font-mono font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
+              <i class="fa-solid fa-microchip"></i> Watchdog Circuit Breakers
+            </span>
+            <button onclick="resetWatchdogBreakers()" class="px-3 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-[11px] font-mono transition">
+              <i class="fa-solid fa-rotate-left"></i> Reset All Breakers
+            </button>
+          </div>
+          <div class="space-y-3 font-mono text-xs">
+            <div id="watchdog-summary" class="bg-black/40 border border-white/10 rounded-xl p-3 text-[11px] space-y-1.5">
+              <div class="flex justify-between text-slate-400"><span>Overall Health:</span><span id="watchdog-health" class="text-emerald-400 font-bold">NORMAL</span></div>
+              <div class="flex justify-between text-slate-400"><span>Monitored Tools:</span><span id="watchdog-tool-count" class="text-white font-bold">4</span></div>
+            </div>
+            <div class="font-bold text-slate-300 text-xs mt-3">Circuit Breaker States</div>
+            <div id="watchdog-breakers-list" class="space-y-1.5 max-h-48 overflow-y-auto">
+              <div class="text-slate-500 py-2 text-center">Loading breakers...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 10: SYSTEM DIAGNOSTICS PROBES -->
+    <div id="tab-content-diagnostics" class="tab-panel hidden space-y-6">
+      <!-- Diagnostics Overview Card -->
+      <div class="glass-card rounded-2xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+            <div>
+              <div class="text-sm font-mono font-bold text-white flex items-center gap-2">
+                Unified Autonomous Subsystems Diagnostics
+                <span id="diag-overall-status" class="px-2.5 py-0.5 rounded text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">HEALTHY</span>
+              </div>
+              <div class="text-xs font-mono text-slate-400 mt-0.5">Automated sub-millisecond health probes across memory, sandbox, routing, policy, and swarm subsystems.</div>
+            </div>
+          </div>
+          <button onclick="loadDiagnostics()" class="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-mono text-xs font-bold transition flex items-center gap-2">
+            <i class="fa-solid fa-arrows-rotate"></i> Run Health Probes
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 font-mono text-xs">
+          <div class="p-3 bg-black/40 border border-white/10 rounded-xl">
+            <span class="text-slate-400 block text-[10px] uppercase">Overall Health</span>
+            <span id="diag-score" class="text-xl font-bold text-emerald-400">100%</span>
+          </div>
+          <div class="p-3 bg-black/40 border border-white/10 rounded-xl">
+            <span class="text-slate-400 block text-[10px] uppercase">Subsystems Probed</span>
+            <span id="diag-probed-count" class="text-xl font-bold text-white">7</span>
+          </div>
+          <div class="p-3 bg-black/40 border border-white/10 rounded-xl">
+            <span class="text-slate-400 block text-[10px] uppercase">Healthy Units</span>
+            <span id="diag-healthy-count" class="text-xl font-bold text-emerald-400">7</span>
+          </div>
+          <div class="p-3 bg-black/40 border border-white/10 rounded-xl">
+            <span class="text-slate-400 block text-[10px] uppercase">Last Probe Timestamp</span>
+            <span id="diag-timestamp" class="text-xs text-slate-300 font-bold">Just now</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Probes Grid -->
+      <div class="glass-card rounded-2xl p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3 font-mono text-xs">
+          <span class="font-bold text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-stethoscope text-emerald-400"></i> Individual Subsystem Probes & Latencies
+          </span>
+          <span class="text-slate-500 text-[11px]">Real-time round-trip latency</span>
+        </div>
+        <div id="diagnostics-probes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 font-mono text-xs">
+          <div class="text-slate-500 text-center py-8 col-span-3">Running health probes...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
   <!-- DIAGNOSTIC HUD FOOTER BAR -->
   <div class="border-t border-white/10 bg-[#030712]/90 backdrop-blur px-6 py-2 flex items-center justify-between text-[11px] font-mono text-slate-400 relative z-20">
     <div class="flex items-center space-x-4">
@@ -966,6 +1079,8 @@ assert compute_cube(4) == 64</textarea>
       else if (tabId === 'skills') loadSkills();
       else if (tabId === 'swarm') loadSwarm();
       else if (tabId === 'router') loadRouter();
+      else if (tabId === 'security') loadSecurity();
+      else if (tabId === 'diagnostics') loadDiagnostics();
     }
 
     function setPrompt(txt) {
@@ -1732,6 +1847,175 @@ assert compute_cube(4) == 64</textarea>
         console.error('Evolution mutation error:', e);
         resEl.innerText = 'Evolution triggered across prompt generation suite.';
         playSound('success');
+      }
+    }
+
+    // --- VFS & WATCHDOG SECURITY ---
+    async function loadSecurity() {
+      try {
+        const [vfsRes, wdRes] = await Promise.all([
+          fetch('/api/vfs/status'),
+          fetch('/api/watchdog/status')
+        ]);
+        const vfsData = await vfsRes.json();
+        const wdData = await wdRes.json();
+
+        // Render VFS
+        if (vfsData) {
+          document.getElementById('vfs-tenant-name').innerText = vfsData.tenant_id || 'tenant-default';
+          document.getElementById('vfs-dirty-count').innerText = vfsData.dirty_paths ? vfsData.dirty_paths.length : 0;
+          
+          const mountsList = document.getElementById('vfs-mounts-list');
+          if (vfsData.tenants && vfsData.tenants.length > 0) {
+            mountsList.innerHTML = vfsData.tenants.map(t => `
+              <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/10">
+                <span class="text-white font-mono">${t}</span>
+                <span class="text-[10px] text-emerald-400 font-bold">MOUNTED</span>
+              </div>
+            `).join('');
+          } else {
+            mountsList.innerHTML = `
+              <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/10">
+                <span class="text-white font-mono">${vfsData.tenant_id || 'tenant-default'}</span>
+                <span class="text-[10px] text-emerald-400 font-bold">ACTIVE (CoW)</span>
+              </div>
+            `;
+          }
+        }
+
+        // Render Watchdog
+        if (wdData) {
+          const overallHealth = wdData.tripped_breakers && wdData.tripped_breakers.length > 0 ? 'DEGRADED' : 'NORMAL';
+          const healthEl = document.getElementById('watchdog-health');
+          healthEl.innerText = overallHealth;
+          healthEl.className = overallHealth === 'NORMAL' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+          document.getElementById('watchdog-tool-count').innerText = wdData.total_monitored_tools || 4;
+
+          const breakersList = document.getElementById('watchdog-breakers-list');
+          if (wdData.breakers && Object.keys(wdData.breakers).length > 0) {
+            breakersList.innerHTML = Object.entries(wdData.breakers).map(([tool, b]) => {
+              const state = b.state || 'CLOSED';
+              const stateBadge = state === 'CLOSED' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' :
+                                state === 'OPEN' ? 'text-rose-400 border-rose-500/20 bg-rose-500/10' :
+                                'text-amber-400 border-amber-500/20 bg-amber-500/10';
+              return `
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/10">
+                  <div>
+                    <span class="text-white font-mono">${tool}</span>
+                    <span class="text-[10px] text-slate-500 block">Failures: ${b.failure_count || 0}</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] border ${stateBadge} font-bold">${state}</span>
+                </div>
+              `;
+            }).join('');
+          } else {
+            breakersList.innerHTML = '<div class="text-slate-500 text-center py-2">All breakers operational and in CLOSED state.</div>';
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load security state:', e);
+      }
+    }
+
+    async function commitVFSLayer() {
+      playSound('click');
+      try {
+        const res = await fetch('/api/vfs/commit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenant_id: 'tenant-default' })
+        });
+        const data = await res.json();
+        playSound('success');
+        alert(data.message || 'VFS CoW layer successfully committed to immutable backing store!');
+        loadSecurity();
+      } catch (e) {
+        console.error('Failed to commit VFS layer:', e);
+        playSound('error');
+      }
+    }
+
+    async function resetWatchdogBreakers() {
+      playSound('click');
+      try {
+        await fetch('/api/watchdog/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        playSound('success');
+        loadSecurity();
+      } catch (e) {
+        console.error('Failed to reset breakers:', e);
+        playSound('error');
+      }
+    }
+
+    // --- SYSTEM DIAGNOSTICS PROBES ---
+    async function loadDiagnostics() {
+      playSound('click');
+      const grid = document.getElementById('diagnostics-probes-grid');
+      try {
+        const res = await fetch('/api/diagnostics');
+        const data = await res.json();
+
+        // Overall HUD
+        const overallStatusEl = document.getElementById('diag-overall-status');
+        overallStatusEl.innerText = data.overall_status;
+        overallStatusEl.className = data.overall_status === 'HEALTHY' ? 'px-2.5 py-0.5 rounded text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold' :
+                                    (data.overall_status === 'DEGRADED' ? 'px-2.5 py-0.5 rounded text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold' :
+                                    'px-2.5 py-0.5 rounded text-[11px] bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold');
+
+        const scorePercent = Math.round((data.healthy_count / Math.max(1, data.subsystems_probed)) * 100);
+        document.getElementById('diag-score').innerText = scorePercent + '%';
+        document.getElementById('diag-probed-count').innerText = data.subsystems_probed;
+        document.getElementById('diag-healthy-count').innerText = data.healthy_count;
+        document.getElementById('diag-timestamp').innerText = new Date(data.timestamp * 1000).toLocaleTimeString();
+
+        // Render subsystem probe cards
+        const iconMap = {
+          'memory_hierarchy': 'fa-brain',
+          'virtual_filesystem': 'fa-folder-tree',
+          'sandbox_watchdog': 'fa-shield-virus',
+          'policy_engine': 'fa-gavel',
+          'model_router': 'fa-route',
+          'swarm_blackboard': 'fa-users-viewfinder',
+          'knowledge_graph': 'fa-diagram-project'
+        };
+
+        grid.innerHTML = data.results.map(r => {
+          const icon = iconMap[r.name] || 'fa-microchip';
+          const badgeClass = r.status === 'HEALTHY' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' :
+                             r.status === 'DEGRADED' ? 'text-amber-400 border-amber-500/20 bg-amber-500/10' :
+                             'text-rose-400 border-rose-500/20 bg-rose-500/10';
+          const latencyBarWidth = Math.min(100, Math.max(10, r.latency_ms * 20));
+          return `
+            <div class="p-4 rounded-xl bg-black/40 border border-white/10 hover:border-emerald-500/30 transition space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid ${icon} text-emerald-400 text-sm"></i>
+                  <span class="font-bold text-white text-xs">${r.name}</span>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] border ${badgeClass} font-bold">${r.status}</span>
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+                  <span>Latency</span>
+                  <span class="text-cyan-400 font-mono">${r.latency_ms} ms</span>
+                </div>
+                <div class="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div class="h-full bg-cyan-400 rounded-full" style="width: ${latencyBarWidth}%"></div>
+                </div>
+              </div>
+              <div class="bg-black/60 rounded-lg p-2 text-[10px] text-slate-400 font-mono overflow-x-auto max-h-24">
+                <pre>${JSON.stringify(r.details, null, 2)}</pre>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error('Diagnostics probe error:', e);
+        grid.innerHTML = '<div class="text-rose-400 text-center py-8 col-span-3">Failed to execute health probes. Subsystem error.</div>';
       }
     }
 
