@@ -27,6 +27,7 @@ from sandbox.watchdog import SandboxWatchdog
 from sandbox.tenant import TenantWorkspaceManager, TenantConfig
 from routing import ModelRouter, ComplexityClassifier
 from evolution import StrategyManager, EvolutionaryTournament
+from dashboard.diagnostics import SystemDiagnostics
 from telemetry.context import get_global_tracer
 from telemetry.exporter import TraceExporter
 from tools.base import get_default_registry
@@ -435,6 +436,22 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # API: Virtual Filesystem Overlays Status
         if path == "/api/vfs/status":
             self._send_json({"tenants": get_workspace_manager().list_tenants()})
+            return
+
+        # API: System Diagnostics and Subsystem Health Probes
+        if path == "/api/diagnostics":
+            ctx = {
+                "orchestrator": get_orchestrator(),
+                "workspace_manager": get_workspace_manager(),
+                "watchdog": get_watchdog(),
+                "policy_engine": get_policy_engine(),
+                "model_router": get_model_router(),
+                "blackboard": get_blackboard(),
+                "knowledge_graph": get_knowledge_graph(),
+            }
+            diag = SystemDiagnostics(server_context=ctx)
+            report = diag.probe_all()
+            self._send_json(report.model_dump())
             return
 
         # API: Single Episode Details
